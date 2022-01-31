@@ -66,6 +66,7 @@ def retrieve(year, variable, new_varname):
     
     print("Data moved.")
     
+    return None
 
 # define the variables you're interested in 
 variables = [
@@ -96,4 +97,4 @@ for v in new_varnames:
 # download data 2002-2021 for each variable
 for i in range(len(variables)):
     for y in range(2002, 2022):
-        retrieve(year, variable[i], new_varname[i])
+        retrieve(y, variable[i], new_varname[i])
