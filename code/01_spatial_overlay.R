@@ -48,7 +48,7 @@ calc_geoweights <- function(climate_param, year, input_polygons, polygon_id){
   rast_xmax <- extent(clim_raster)@xmax
   
   # Rotate raster if initial longitudes don't align 
-  if(poly_xmax != rast_xmax) {
+  if(!dplyr::near(poly_xmax, rast_xmax, tol=1.01)) {
 
     message(crayon::yellow('Adjusting raster longitude from',
                             round(rast_xmin,0), '-', round(rast_xmax,0),
@@ -62,7 +62,7 @@ calc_geoweights <- function(climate_param, year, input_polygons, polygon_id){
   poly_range <- c(extent(input_polygons)@xmin, extent(input_polygons)@xmax)
   rast_range <- c(extent(clim_raster)@xmin, extent(clim_raster)@xmax)
   
-  if(dplyr::near(poly_range[1], rast_range[1], tol=1) & dplyr::near(poly_range[2], rast_range[2], tol=1)){
+  if(dplyr::near(poly_range[1], rast_range[1], tol=1.01) & dplyr::near(poly_range[2], rast_range[2], tol=1.01)){
     
     message(crayon::green('Longitude ranges match'))
     
