@@ -86,6 +86,23 @@ calc_geoweights <- function(climate_param, year, input_polygons, polygon_id){
   geoweights <- geoweights[, .(gridNumber = cell, poly_id, w_geo = coverage_fraction, value = NULL)]
   geoweights[, w_geo := w_geo / sum(w_geo), by = poly_id] # Normalize by polygon
 
+  
+  message(crayon::yellow('Checking sum of weights within polygons'))
+  check_weights <- geoweights[, w_sum := sum(w_geo), by=poly_id]
+  
+  # Check that each polygon sums to 1, if not error w/polygon id 
+  for(i in nrow(check_weights)){
+    
+    if(check_weights$w_sum[i] != 1){
+      
+      stop(crayon::red('Area weights for polygon', check_weights$poly_id, 'do not sum to 1'))
+      
+    }
+    
+  }
+  # If it doesn't error out then all weight sums = 1
+  message(crayon::green('All weights sum to 1'))
+  
   return(geoweights)
   
 }
