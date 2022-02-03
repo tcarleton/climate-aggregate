@@ -10,12 +10,12 @@ from pyprojroot import here
 import cdsapi
 import os
 
-def retrieve(year, variable, new_varname):
+def retrieve(year, variable, new_varname, month):
     
     # tell cdsapi who you are. You need an acconut. See: https://stackoverflow.com/questions/66288678/cds-toolbox-exception-missing-incomplete-configuration
     c = cdsapi.Client() 
     
-    filename = 'era5_'+new_varname+'_'+str(year)+'.nc'
+    filename = 'era5_'+new_varname+'_'+month+"-"+str(year)+'.nc'
     
     # retrieve the data for the year and variable you specified. 
     c.retrieve(
@@ -24,12 +24,7 @@ def retrieve(year, variable, new_varname):
             'product_type': 'reanalysis',
             'variable': variable,
             'year': str(year),
-            'month': [
-                '01', '02', '03',
-                '04', '05', '06',
-                '07', '08', '09',
-                '10', '11', '12',
-            ],
+            'month': month,
             'day': [
                 '01', '02', '03',
                 '04', '05', '06',
@@ -57,7 +52,7 @@ def retrieve(year, variable, new_varname):
         },
         filename)
     
-    print("Data downloaded for ",new_varname," year "+str(year)+". Now moving data.")
+    print("Data downloaded for ",new_varname," month-year "+month+"-"+str(year)+". Now moving data.")
     
     # move your data to the appropriate directory in the raw data folder
     source = here("./code/")
@@ -85,16 +80,23 @@ new_varnames = [
 # make directories. 
 # note I could get away without this step -- os would just get me warnings that it had to create the directory if I put something in before creating. 
 
-# make data and raw directories
-os.mkdir(here("./data/"))
-os.mkdir(here("./data/raw"))
+# # make data and raw directories
+# os.mkdir(here("./data/"))
+# os.mkdir(here("./data/raw/"))
 
-# make the directories for the variables
-for v in new_varnames:
-    os.mkdir(here("./data/raw/"+v))
+# # make the directories for the variables
+# for v in new_varnames:
+#     os.mkdir(here("./data/raw/"+v))
 
+months = [
+    '01', '02', '03',
+    '04', '05', '06',
+    '07', '08', '09',
+    '10', '11', '12',
+]
     
 # download data 2002-2021 for each variable
 for i in range(len(variables)):
     for y in range(2002, 2022):
-        retrieve(y, variables[i], new_varnames[i])
+        for month in months:
+            retrieve(y, variables[i], new_varnames[i], month)
