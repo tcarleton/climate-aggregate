@@ -15,7 +15,12 @@ def retrieve(year, variable, new_varname, month):
     # tell cdsapi who you are. You need an acconut. See: https://stackoverflow.com/questions/66288678/cds-toolbox-exception-missing-incomplete-configuration
     c = cdsapi.Client() 
     
-    filename = 'era5_'+new_varname+'_'+month+"-"+str(year)+'.nc'
+    filename = 'era5_{new_varname}_{year}_{month}.nc'.format(
+        new_varname=new_varname,
+        year=year, 
+        month=month
+    )
+    relative_outpath = '../data/raw/{new_varname}/'.format(new_varname=new_varname)
     
     # retrieve the data for the year and variable you specified. 
     c.retrieve(
@@ -50,16 +55,9 @@ def retrieve(year, variable, new_varname, month):
             ],
             'format': 'netcdf',
         },
-        filename)
+        relative_outpath+filename)
     
     print("Data downloaded for ",new_varname," month-year "+month+"-"+str(year)+". Now moving data.")
-    
-    # move your data to the appropriate directory in the raw data folder
-    source = here("./code/")
-    destination = here("./data/raw/"+new_varname+"/")
-    os.rename(str(source)+filename, str(destination)+filename)
-    
-    print("Data moved.")
     
     return None
 
@@ -80,13 +78,12 @@ new_varnames = [
 # make directories. 
 # note I could get away without this step -- os would just get me warnings that it had to create the directory if I put something in before creating. 
 
-# # make data and raw directories
-# os.mkdir(here("./data/"))
-# os.mkdir(here("./data/raw/"))
 
-# # make the directories for the variables
-# for v in new_varnames:
-#     os.mkdir(here("./data/raw/"+v))
+# make the directories for the variables
+for v in new_varnames:
+    if not os.path.exists(here("./data/raw/"+v)):
+        os.makedirs(here("./data/raw/"+v))
+
 
 months = [
     '01', '02', '03',
