@@ -57,7 +57,7 @@ def retrieve(year, variable, new_varname, month):
         },
         relative_outpath+filename)
     
-    print("Data downloaded for ",new_varname," month-year "+month+"-"+str(year)+". Now moving data.")
+    print("Data downloaded for ",new_varname," month-year "+month+"-"+str(year)+".")
     
     return None
 
