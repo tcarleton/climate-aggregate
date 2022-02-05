@@ -117,7 +117,7 @@ calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
   # If it doesn't error out then all weight sums = 1
   message(crayon::green('All weights sum to 1'))
   
-  return(geoweights)
+  return(geoweights[, w_sum := NULL])
   
 }
 
