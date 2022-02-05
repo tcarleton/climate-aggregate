@@ -5,37 +5,51 @@
 
 #' Function to find spatial overlap between a raster and a set of polygons
 #' 
-#' @param climate_param the climate parameter abbreviation 
-#' @param year the year
+#' @param data_source the source of climate data (default is era5)
 #' @param input_polygons a simple features polygon or multipolygon object  
 #' @param polygon_id the name of a column in the sf object representing a unique identifier for each polygon  
 #' 
 #' @return a data.table of geoweights (area weighted raster/polygon overlap)
 
 
-calc_geoweights <- function(climate_param, year, input_polygons, polygon_id){
+calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
   
   ## Setup 
   ## -----------------------------------------------
   require(pacman)
   pacman::p_load(ncdf4, data.table, raster, exactextractr, tidyverse, sf, here, crayon)
   
-  ## Pull climate data  
+  ## Pull a demo climate data raster based on the input data source
   ## -----------------------------------------------
 
-  # Check with Anna on the file structure to call the raw data 
-  # ncpath  <- file.path(here::here(), 'data/raw', climate_param)
-  # ncname  <- paste('/era5', climate_param, year, sep="_")
-  # nc_file <- paste0(ncpath, ncname, '.nc')
+  # Normalize the data source input - remove spaces & lower case
+  data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
+  
+  # Error if the data source is one that is not currently supported 
+  if(!data_source_norm %in% c('era5')){
+    stop(crayon::red('Unsupported climate data source. Supported formats are: era5'))
+  }
+  
+  
+  # Check with Anna on the file structure to call the demo data
+  # ncpath  <- file.path(here::here(), 'data/raw/demo')
+  # ncname  <- paste(data_source_norm, 'demo', sep="_")
+  # nc_file <- paste0(ncpath, ncname,'.nc')
   
   # For now just use the example ncdf file from Anna saved to my desktop
   # Example ERA5 file
   ncpath <- "/Users/saraorofino/Desktop/"
-  ncname <- "era5prcp2020_04_06"  
+  ncname <- "era5_demo"  
   nc_file <- paste0(ncpath, ncname, ".nc")
   
   
+  # Create raster
   clim_raster <- raster(nc_file)
+  
+  ## Raster cell area 
+  ## -----------------------------------------------
+  
+  clim_area_raster <- area(clim_raster)
   
   ## Raster/polygon alignment 
   ## -----------------------------------------------
@@ -44,8 +58,8 @@ calc_geoweights <- function(climate_param, year, input_polygons, polygon_id){
   
   poly_xmin <- extent(input_polygons)@xmin
   poly_xmax <- extent(input_polygons)@xmax
-  rast_xmin <- extent(clim_raster)@xmin
-  rast_xmax <- extent(clim_raster)@xmax
+  rast_xmin <- extent(clim_area_raster)@xmin
+  rast_xmax <- extent(clim_area_raster)@xmax
   
   # Rotate raster if initial longitudes don't align 
   if(!dplyr::near(poly_xmax, rast_xmax, tol=1.01)) {
@@ -54,13 +68,13 @@ calc_geoweights <- function(climate_param, year, input_polygons, polygon_id){
                             round(rast_xmin,0), '-', round(rast_xmax,0),
                            'to', round(poly_xmin,0), '-', round(poly_xmax,0)))
 
-    clim_raster <- raster::rotate(clim_raster)
+    clim_area_raster <- raster::rotate(clim_area_raster)
 
   }
   
   # Check longitude ranges match (with a tolerance of 1 in case lon +- 179 vs. +-180)
   poly_range <- c(extent(input_polygons)@xmin, extent(input_polygons)@xmax)
-  rast_range <- c(extent(clim_raster)@xmin, extent(clim_raster)@xmax)
+  rast_range <- c(extent(clim_area_raster)@xmin, extent(clim_area_raster)@xmax)
   
   if(dplyr::near(poly_range[1], rast_range[1], tol=1.01) & dplyr::near(poly_range[2], rast_range[2], tol=1.01)){
     
@@ -73,7 +87,7 @@ calc_geoweights <- function(climate_param, year, input_polygons, polygon_id){
   }
   
   # Match raster and polygon crs 
-  crs_raster <- crs(clim_raster)
+  crs_raster <- crs(clim_area_raster)
   polygons_reproj <- input_polygons %>% 
     st_transform(crs = crs_raster)
   
@@ -81,9 +95,9 @@ calc_geoweights <- function(climate_param, year, input_polygons, polygon_id){
   ## -----------------------------------------------
   message(crayon::yellow('Extracting raster polygon overlap'))
     
-  geoweights <- rbindlist(exactextractr::exact_extract(clim_raster, polygons_reproj, progress = T, include_cell = T), idcol = "poly_id")
-  geoweights[, poly_id := polygons_reproj[[polygon_id]][poly_id]] # Add the unique id for each polygon based on the input col name
-  geoweights <- geoweights[, .(gridNumber = cell, poly_id, w_geo = coverage_fraction, value = NULL)]
+  geoweights <- rbindlist(exactextractr::exact_extract(clim_area_raster, polygons_reproj, progress = T, include_cell = T), idcol = "poly_id")
+  geoweights[, ':=' (poly_id = polygons_reproj[[polygon_id]][poly_id], cell_area_km2 = value)] # Add the unique id for each polygon based on the input col name
+  geoweights <- geoweights[, .(gridNumber = cell, poly_id, w_geo = coverage_fraction * cell_area_km2)] # Geoweight = area km2 * coverage fraction 
   geoweights[, w_geo := w_geo / sum(w_geo), by = poly_id] # Normalize by polygon
 
   
@@ -109,4 +123,4 @@ calc_geoweights <- function(climate_param, year, input_polygons, polygon_id){
 
 ## Test function 
 us_counties <- tigris::counties() #Input polygons for testing
-test_weights <- calc_geoweights(climate_param = 'prcp', year=2020, input_polygons=us_counties, polygon_id='GEOID')
+test_weights <- calc_geoweights(data_source = 'ERA5', input_polygons=us_counties, polygon_id='GEOID')
