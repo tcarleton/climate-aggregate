@@ -10,6 +10,8 @@ from pyprojroot import here
 import cdsapi
 import os
 
+data_folder = '/home/tcarleton/climate-aggregate/data'
+
 def retrieve(year, variable, new_varname, month):
     
     # tell cdsapi who you are. You need an acconut. See: https://stackoverflow.com/questions/66288678/cds-toolbox-exception-missing-incomplete-configuration
@@ -20,7 +22,9 @@ def retrieve(year, variable, new_varname, month):
         year=year, 
         month=month
     )
-    relative_outpath = '../data/raw/{new_varname}/'.format(new_varname=new_varname)
+    outpath = '{data_folder}/raw/{new_varname}/'.format(
+        data_folder=data_folder, 
+        new_varname=new_varname)
     
     # retrieve the data for the year and variable you specified. 
     c.retrieve(
@@ -55,7 +59,7 @@ def retrieve(year, variable, new_varname, month):
             ],
             'format': 'netcdf',
         },
-        relative_outpath+filename)
+        outpath+filename)
     
     print("Data downloaded for ",new_varname," month-year "+month+"-"+str(year)+".")
     
@@ -73,17 +77,11 @@ new_varnames = [
     'uv', 
     'temp'
 ]
-    
-    
-# make directories. 
-# note I could get away without this step -- os would just get me warnings that it had to create the directory if I put something in before creating. 
-
 
 # make the directories for the variables
 for v in new_varnames:
-    if not os.path.exists(here("./data/raw/"+v)):
-        os.makedirs(here("./data/raw/"+v))
-
+    if not os.path.exists(data_folder+"/raw/"+v):
+        os.makedirs(data_folder+"/raw/"+v)
 
 months = [
     '01', '02', '03',
