@@ -10,7 +10,8 @@ from pyprojroot import here
 import cdsapi
 import os
 
-data_folder = '/home/tcarleton/climate-aggregate/data'
+# data_folder = '/home/tcarleton/climate-aggregate/data'
+data_folder = '../data'
 
 def retrieve(year, variable, new_varname, month):
     
