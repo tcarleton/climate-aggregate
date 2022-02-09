@@ -13,15 +13,14 @@ import os
 # data_folder = '/home/tcarleton/climate-aggregate/data'
 data_folder = '../data'
 
-def retrieve(year, variable, new_varname, month):
+def retrieve(year, variable, new_varname):
     
     # tell cdsapi who you are. You need an acconut. See: https://stackoverflow.com/questions/66288678/cds-toolbox-exception-missing-incomplete-configuration
     c = cdsapi.Client() 
     
-    filename = 'era5_{new_varname}_{year}_{month}.nc'.format(
+    filename = 'era5_{new_varname}_{year}.nc'.format(
         new_varname=new_varname,
-        year=year, 
-        month=month
+        year=year
     )
     outpath = '{data_folder}/raw/{new_varname}/'.format(
         data_folder=data_folder, 
@@ -34,7 +33,12 @@ def retrieve(year, variable, new_varname, month):
             'product_type': 'reanalysis',
             'variable': variable,
             'year': str(year),
-            'month': month,
+            'month': [
+                '01', '02', '03',
+                '04', '05', '06',
+                '07', '08', '09',
+                '10', '11', '12',
+            ],
             'day': [
                 '01', '02', '03',
                 '04', '05', '06',
@@ -62,7 +66,7 @@ def retrieve(year, variable, new_varname, month):
         },
         outpath+filename)
     
-    print("Data downloaded for ",new_varname," month-year "+month+"-"+str(year)+".")
+    print("Data downloaded for ",new_varname," year "+str(year)+".")
     
     return None
 
@@ -84,15 +88,8 @@ for v in new_varnames:
     if not os.path.exists(data_folder+"/raw/"+v):
         os.makedirs(data_folder+"/raw/"+v)
 
-months = [
-    '01', '02', '03',
-    '04', '05', '06',
-    '07', '08', '09',
-    '10', '11', '12',
-]
     
 # download data 2002-2021 for each variable
 for i in range(len(variables)):
     for y in range(2002, 2022):
-        for month in months:
-            retrieve(y, variables[i], new_varnames[i], month)
+        retrieve(y, variables[i], new_varnames[i])
