@@ -32,7 +32,7 @@ calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
   
   
   # Check with Anna on the file structure to call the demo data
-  # ncpath  <- file.path(here::here(), 'data/raw/demo')
+  # ncpath  <- file.path(here::here(), 'data/demo')
   # ncname  <- paste(data_source_norm, 'demo', sep="_")
   # nc_file <- paste0(ncpath, ncname,'.nc')
   
@@ -117,10 +117,37 @@ calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
   # If it doesn't error out then all weight sums = 1
   message(crayon::green('All weights sum to 1'))
   
-  return(geoweights[, w_sum := NULL])
+  ## Save outputs 
+  ## -----------------------------------------------
+  
+  # Check if there is already a general geoweights folder
+  if(!dir.exists(here::here("data", "int", "geoweights"))){
+
+    # If no - create it
+    message(crayon::yellow('Creating data/int/geoweights/'))
+    dir.create(here::here("data", "int", "geoweights"), recursive=T)
+
+  }
+  
+  # File save name
+  polygon_input_name <- deparse(substitute(input_polygons))
+  save_name <- paste0(paste(polygon_input_name, data_source_norm, sep="_"), ".csv")
+  save_path <- file.path(here::here(), "data", "int", "geoweights")
+  
+  # Save message
+  message(crayon::yellow('Saving', save_name, 'to', save_path))
+  
+  # Save geoweights 
+  fwrite(geoweights[, w_sum := NULL], file = file.path(save_path, save_name))
+
+
+  ## Return weights 
+  ## -----------------------------------------------
+  return(geoweights)
   
 }
 
 ## Test function 
 us_counties <- tigris::counties() #Input polygons for testing
 test_weights <- calc_geoweights(data_source = 'ERA5', input_polygons=us_counties, polygon_id='GEOID')
+
