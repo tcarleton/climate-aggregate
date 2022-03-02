@@ -2,14 +2,36 @@
 ## February 22, 2022
 ## Merge Climate Rasters: Pipeline Step 02
 
-## Inputs so far: data_source, climate_var, year (one yr, multiple yrs?), something related to weights - weights_name or weights_polygons 
+## Inputs so far: data_source, climate_var, year (one yr, multiple yrs?), input_polygons_name, nonlinearity transformation  
 
   ## Setup 
   ## -----------------------------------------------
   require(pacman)
-  pacman::p_load(ncdf4, data.table, raster, tidyverse, here, crayon)
+  pacman::p_load(ncdf4, data.table, raster, lazyraster, tidyverse, here, crayon)
 
-  ## Pull climate data 
+  
+  ## Load saved geoweights 
+  ## -----------------------------------------------
+  
+  # Normalize the data source input - remove spaces & lower case
+  data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
+  
+  # File name to call the weights
+  polygon_name <- deparse(substitute(input_polygons_name))
+  weights_file <- paste0(paste(polygon_name, data_source_norm, sep="_"), ".csv")
+  
+  # Data.table of geoweights 
+  weights <- fread(file.path(here::here(), "data", "int", "geoweights", weights_file))
+  
+  # Extent of geoweights
+  min_x <- min(weights$x)
+  max_x <- max(weights$x)
+  min_y <- min(weights$y)
+  max_y <- max(weights$y)
+  
+  weights_ext <- raster::extent(min_x, max_x, min_y, max_y)
+  
+  ## Lazy load climate data 
   ## -----------------------------------------------
   
   # Normalize the data source input - remove spaces & lower case
@@ -20,27 +42,27 @@
     stop(crayon::red('No ERA5 data available. Supported variables are: prcp, temp, or uv'))
   }
   
-  # Read in climate rasters
+  # Read in climate rasters based on weights extent
   ncpath  <- file.path(here::here(), 'data/raw', climate_var)
   ncname  <- paste(data_source_norm, climate_var, year, sep="_")
   nc_file <- paste0(ncpath, ncname,'.nc')
   
-  clim_raster <- raster(nc_file)
+  clim_lazy <- lazyraster(nc_file)
+  clim_raster <- raster::crop(clim_lazy, weights_ext)
   
   # Convert climate raster to climate data.table
   clim_dt <- data.table(gridNumber = 1:length(clim_raster), value = getValues(clim_raster))
   
-  ## Pull saved geoweights 
+  ### For a single year: 
+  
+  ## Nonlinearities (by grid cell and day)
   ## -----------------------------------------------
   
-  # Normalize the data source input - remove spaces & lower case
-  data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
   
-  # File name to call the weights
-  weights_file <- paste0(paste(input_polygons, data_source_norm, sep="_"), ".csv")
   
-  # Data.table of geoweights 
-  weights <- fread(file.path(here::here(), "data", "int", "geoweights", weights_file), as.data.table = T)
+
+  
+  
   
   ## Merge weights with climate raster 
   ## -----------------------------------------------
@@ -51,25 +73,26 @@
   # Keyed merge on the gridNumber column 
   merged_dt <- clim_dt[weights, allow.cartesian = T] #4 cols: gridNumber, value, poly_id, and w_geo
   
+ 
   
-  ## Multiply weights x climate values; aggregate by polygon  
+  ## Multiply weights x climate value; aggregate by polygon  
   ## -----------------------------------------------
   
   merged_dt[, weighted_value := value * w_geo]
-  merged_dt[, sum_value := sum(weighted_value), by = poly_id]
+  sum_by_poly <- merged_dt[, sum(weighted_value), by = poly_id]
+  
+  ## Agg by date and polygons example
+  # agg <- dt[, lapply(.SD, weighted.mean, w = w, na.rm = T), 
+  #           by = .(fips3059, dateNum), 
+  #           .SDcols = agg_vars]
   
   ## Save outputs
   ## -----------------------------------------------
   
   # Add a more informative column name for the climate parameter
   clim_var    <- names(clim_raster) %>% tolower(.)
-  setnames(merged_dt, old = "sum_value", new = clim_var)
+  setnames(sum_by_poly, old = "V1", new = clim_var)
   
-  # Check if there is already an int/? folder
-  if(!dir.exists(here::here("data", "int"))){
-    
-    # If no - create it
-    message(crayon::yellow('Creating data/int/'))
-    dir.create(here::here("data", "int"))
+
     
   }
