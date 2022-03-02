@@ -95,9 +95,9 @@ calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
   ## -----------------------------------------------
   message(crayon::yellow('Extracting raster polygon overlap'))
     
-  geoweights <- rbindlist(exactextractr::exact_extract(clim_area_raster, polygons_reproj, progress = T, include_cell = T), idcol = "poly_id")
+  geoweights <- rbindlist(exactextractr::exact_extract(clim_area_raster, polygons_reproj, progress = T, include_cell = T, include_xy = T), idcol = "poly_id")
   geoweights[, ':=' (poly_id = polygons_reproj[[polygon_id]][poly_id], cell_area_km2 = value)] # Add the unique id for each polygon based on the input col name
-  geoweights <- geoweights[, .(gridNumber = cell, poly_id, w_geo = coverage_fraction * cell_area_km2)] # Geoweight = area km2 * coverage fraction 
+  geoweights <- geoweights[, .(gridNumber = cell, x, y, poly_id, w_geo = coverage_fraction * cell_area_km2)] # Geoweight = area km2 * coverage fraction 
   geoweights[, w_geo := w_geo / sum(w_geo), by = poly_id] # Normalize by polygon
 
   
