@@ -7,7 +7,7 @@
   ## Setup 
   ## -----------------------------------------------
   require(pacman)
-  pacman::p_load(ncdf4, data.table, raster, lazyraster, tidyverse, here, crayon)
+  pacman::p_load(ncdf4, data.table, rgdal, raster, lazyraster, tidyverse, here, crayon)
 
   
   ## Load saved geoweights 
@@ -20,10 +20,10 @@
   polygon_name <- deparse(substitute(input_polygons_name))
   weights_file <- paste0(paste(polygon_name, data_source_norm, sep="_"), ".csv")
   
-  # Data.table of geoweights 
+  # Data.table of geoweights - CHANGE LON 0-360
   weights <- fread(file.path(here::here(), "data", "int", "geoweights", weights_file))
   
-  # Extent of geoweights
+  # Extent of geoweights 
   min_x <- min(weights$x)
   max_x <- max(weights$x)
   min_y <- min(weights$y)
@@ -34,9 +34,6 @@
   ## Lazy load climate data 
   ## -----------------------------------------------
   
-  # Normalize the data source input - remove spaces & lower case
-  data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
-  
   # Check if the climate variable is one we have data for 
   if(!climate_var %in% c('prcp', 'temp', 'uv')){
     stop(crayon::red('No ERA5 data available. Supported variables are: prcp, temp, or uv'))
@@ -45,23 +42,24 @@
   # Read in climate rasters based on weights extent
   ncpath  <- file.path(here::here(), 'data/raw', climate_var)
   ncname  <- paste(data_source_norm, climate_var, year, sep="_")
-  nc_file <- paste0(ncpath, ncname,'.nc')
+  nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
-  clim_lazy <- lazyraster(nc_file)
-  clim_raster <- raster::crop(clim_lazy, weights_ext)
+  clim_lazy <- raster::crop(lazyraster(nc_file), weights_ext)  
+  #clim_raster <- lazyraster::as_raster(clim_lazy) 
   
   # Convert climate raster to climate data.table
   clim_dt <- data.table(gridNumber = 1:length(clim_raster), value = getValues(clim_raster))
   
-  ### For a single year: 
   
-  ## Nonlinearities (by grid cell and day)
+  ## Nonlinearities 
   ## -----------------------------------------------
   
   
+  # Simplest version (average daily temperature in grid cell)
+  
   
 
-  
+
   
   
   ## Merge weights with climate raster 
@@ -85,6 +83,7 @@
   # agg <- dt[, lapply(.SD, weighted.mean, w = w, na.rm = T), 
   #           by = .(fips3059, dateNum), 
   #           .SDcols = agg_vars]
+  
   
   ## Save outputs
   ## -----------------------------------------------
