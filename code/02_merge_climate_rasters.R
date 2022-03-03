@@ -9,6 +9,26 @@
   require(pacman)
   pacman::p_load(ncdf4, data.table, rgdal, raster, lazyraster, tidyverse, here, crayon)
 
+  # Function to convert raster to data.table from https://gist.github.com/etiennebr/9515738
+  as.data.table.raster <- function(x, row.names = NULL, optional = FALSE, xy=FALSE, inmem = canProcessInMemory(x, 2), ...) {
+    stopifnot(require("data.table"))
+    if(inmem) {
+      v <- as.data.table(as.data.frame(x, row.names=row.names, optional=optional, xy=xy, ...))
+    } else {
+      tr <- blockSize(x, n=2)
+      l <- lapply(1:tr$n, function(i) 
+        as.data.table(as.data.frame(getValues(x, 
+                                              row=tr$row[i], 
+                                              nrows=tr$nrows[i]), 
+                                    row.names=row.names, optional=optional, xy=xy, ...)))
+      v <- rbindlist(l)
+    }
+    coln <- names(x)
+    if(xy) coln <- c("x", "y", coln)
+    setnames(v, coln)
+    v
+  }
+  setMethod('as.data.table', signature(x='Raster'), as.data.table.raster)
   
   ## Load saved geoweights 
   ## -----------------------------------------------
@@ -20,8 +40,10 @@
   polygon_name <- deparse(substitute(input_polygons_name))
   weights_file <- paste0(paste(polygon_name, data_source_norm, sep="_"), ".csv")
   
-  # Data.table of geoweights - CHANGE LON 0-360
+  # Data.table of geoweights 
   weights <- fread(file.path(here::here(), "data", "int", "geoweights", weights_file))
+  # Convert 0-360 to match climate raster
+  weights[, x := ifelse(x < 0, x + 360, x)]
   
   # Extent of geoweights 
   min_x <- min(weights$x)
@@ -30,6 +52,8 @@
   max_y <- max(weights$y)
   
   weights_ext <- raster::extent(min_x, max_x, min_y, max_y)
+  
+  ### Will be the start of in parallel 
   
   ## Lazy load climate data 
   ## -----------------------------------------------
@@ -45,18 +69,22 @@
   nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
   clim_lazy <- raster::crop(lazyraster(nc_file), weights_ext)  
-  #clim_raster <- lazyraster::as_raster(clim_lazy) 
+  clim_raster <- lazyraster::as_raster(clim_lazy) # has no crs? 
+  clim_stack  <- raster::stack(clim_lazy) # errors out - differing number of rows
+  
   
   # Convert climate raster to climate data.table
-  clim_dt <- data.table(gridNumber = 1:length(clim_raster), value = getValues(clim_raster))
+  ## Problem: gridNumbers are just 1:length so they aren't going to align with the gridNumber in geoweights
+  ## Found a function to covert rasters to data tables including xy so we can match on that? 
+  ## Second problem: resolution is different if I lazy load it. Instead of 0.25x0.25 it's 0.11355 x 0.20633 so the xy doesn't align
+  clim_dt <- as.data.table.raster(clim_raster, xy = TRUE)
   
   
   ## Nonlinearities 
   ## -----------------------------------------------
   
-  
-  # Simplest version (average daily temperature in grid cell)
-  
+  # Simplest version - avg daily temperature in a grid cell 
+  clim_dt[,  ]
   
 
 
