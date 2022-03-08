@@ -3,7 +3,7 @@
 ## Aggregate Climate Data: Pipeline Step 02
 
 ## Inputs so far: data_source, climate_var, year (one yr, multiple yrs?), input_polygons_name, nonlinearity transformation  
-agg_climate_data <- function(years, data_source, climate_var, input_polygons_name, nonlinear_transformation = 'daily_mean') {
+agg_climate_data <- function(years, data_source, climate_var, input_polygons_name, nonlinear_transformation = 'polynomial') {
   
   ## Setup 
   ## -----------------------------------------------
@@ -77,23 +77,32 @@ agg_climate_data <- function(years, data_source, climate_var, input_polygons_nam
   layer_names <- all_layers[seq(1, length(all_layers), 24)] # Keep every 24th layer name (1 per day)
   layer_names <- paste0('month_', substring(layer_names, 7,8)) # Extract month for each layer (1 per day)
   
+  
+  ## Aggregate to grid-day level  
+  ## -----------------------------------------------
+  
+  # Average over each set of 24 layers - assuming there are 24*365 layers  
+  indices<-rep(1:(nlayers(clim_raster)/24),each=24)
+  clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=mean) #Stack of 365 layers
+  
+  
+  
   ## Nonlinearities 
   ## -----------------------------------------------
   
+
+  # Simplest version of polynomial - just square the values
+  if(nonlinear_transformation == 'polynomial'){
   
-  # Simplest version - daily mean per grid cell (default right now)
-  if(nonlinear_transformation == 'daily_mean'){
-  
-    # Average over each set of 24 layers - assuming there are 24*365 layers  
-    indices<-rep(1:(nlayers(clim_raster)/24),each=24)
-    clim_nonlinear <- raster::stackApply(clim_raster, indices = indices, fun=mean) 
+    # For each daily layer, square the values in each grid cell 
+    clim_nonlinear <- raster::calc(clim_daily, fun=function(x){x ^ 2}) 
   
   }
   
   ## Later on: add more options based on other input values
 
   
-  # Convert the aggregated climate raster to data.table
+  # Convert the daily climate raster to data.table
   # Should output raster cells x/y with 365 days as column names
   clim_dt <- as.data.table.raster(clim_nonlinear, xy = TRUE)
   
