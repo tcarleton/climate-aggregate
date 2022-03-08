@@ -1,9 +1,10 @@
 ## Sara Orofino
 ## February 22, 2022
-## Merge Climate Rasters: Pipeline Step 02
+## Aggregate Climate Data: Pipeline Step 02
 
 ## Inputs so far: data_source, climate_var, year (one yr, multiple yrs?), input_polygons_name, nonlinearity transformation  
-
+agg_climate_data <- function(years, data_source, climate_var, input_polygons_name, nonlinear_transformation = 'daily_mean') {
+  
   ## Setup 
   ## -----------------------------------------------
   require(pacman)
@@ -55,7 +56,7 @@
   
   ### Will be the start of in parallel 
   
-  ## Lazy load climate data 
+  ## Load climate data 
   ## -----------------------------------------------
   
   # Check if the climate variable is one we have data for 
@@ -63,63 +64,84 @@
     stop(crayon::red('No ERA5 data available. Supported variables are: prcp, temp, or uv'))
   }
   
-  # Read in climate rasters based on weights extent
+  # Climate data file paths
   ncpath  <- file.path(here::here(), 'data/raw', climate_var)
   ncname  <- paste(data_source_norm, climate_var, year, sep="_")
   nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
-  clim_lazy <- raster::crop(lazyraster(nc_file), weights_ext)  
-  clim_raster <- lazyraster::as_raster(clim_lazy) # has no crs? 
-  clim_stack  <- raster::stack(clim_lazy) # errors out - differing number of rows
+  # Immediately crop to weights extent 
+  clim_raster <- raster::crop(raster::stack(nc_file), weights_ext)
   
-  
-  # Convert climate raster to climate data.table
-  ## Problem: gridNumbers are just 1:length so they aren't going to align with the gridNumber in geoweights
-  ## Found a function to covert rasters to data tables including xy so we can match on that? 
-  ## Second problem: resolution is different if I lazy load it. Instead of 0.25x0.25 it's 0.11355 x 0.20633 so the xy doesn't align
-  clim_dt <- as.data.table.raster(clim_raster, xy = TRUE)
-  
+  # Get layer names (dates)
+  all_layers <- names(clim_raster)
+  layer_names <- all_layers[seq(1, length(all_layers), 24)] # Keep every 24th layer name (1 per day)
+  layer_names <- paste0('month_', substring(layer_names, 7,8)) # Extract month for each layer (1 per day)
   
   ## Nonlinearities 
   ## -----------------------------------------------
   
-  # Simplest version - avg daily temperature in a grid cell 
-  clim_dt[,  ]
   
-
+  # Simplest version - daily mean per grid cell (default right now)
+  if(nonlinear_transformation == 'daily_mean'){
+  
+    # Average over each set of 24 layers - assuming there are 24*365 layers  
+    indices<-rep(1:(nlayers(clim_raster)/24),each=24)
+    clim_nonlinear <- raster::stackApply(clim_raster, indices = indices, fun=mean) 
+  
+  }
+  
+  ## Later on: add more options based on other input values
 
   
+  # Convert the aggregated climate raster to data.table
+  # Should output raster cells x/y with 365 days as column names
+  clim_dt <- as.data.table.raster(clim_nonlinear, xy = TRUE)
+  
+  # Set column names with dates
+  new_names <- c('x', 'y', layer_names)
+  setnames(clim_dt, new_names)
+  
+  # Change from wide to long format
+  clim_dt = melt(clim_dt, id.vars = c("x", "y"))
+  setnames(clim_dt, old='variable', new='month')
   
   ## Merge weights with climate raster 
   ## -----------------------------------------------
   
   # Set key column in the climate data table
-  setkey(clim_dt, gridNumber)
-  
-  # Keyed merge on the gridNumber column 
-  merged_dt <- clim_dt[weights, allow.cartesian = T] #4 cols: gridNumber, value, poly_id, and w_geo
+  keycols = c("x", "y")
+  setkeyv(clim_dt, keycols)
+
+  # Keyed merge on the x/y column 
+  merged_dt <- clim_dt[weights, allow.cartesian = T] #6 cols: x, y, month, value, poly_id, and w_geo
   
  
-  
-  ## Multiply weights x climate value; aggregate by polygon  
+  ## Multiply weights x climate value; aggregate by month and polygon  
   ## -----------------------------------------------
   
+  ## Note this is not the same as below - geoweighted value in each grid cell, then summed by month and polygon
   merged_dt[, weighted_value := value * w_geo]
-  sum_by_poly <- merged_dt[, sum(weighted_value), by = poly_id]
+  sum_by_poly <- merged_dt[, sum(weighted_value), by = .(poly_id, month)]
   
-  ## Agg by date and polygons example
-  # agg <- dt[, lapply(.SD, weighted.mean, w = w, na.rm = T), 
-  #           by = .(fips3059, dateNum), 
-  #           .SDcols = agg_vars]
+  ## This is weighted mean of climate value by month and polygon (NOT a sum of the weighted mean of each cell) 
+  # test <- merged_dt[, lapply(.SD, weighted.mean, w = w_geo, na.rm = T),
+  #           by = .(poly_id, month),
+  #           .SDcols = 'value']
+  
+  ## Add year column 
+  sum_by_poly[, year := year] # Make sure this matches with the in parallel (might need to be x or something else)
+  
+  ## Order columns 
+  setcolorder(sum_by_poly, neworder = c('year', 'month', 'poly_id', 'V1'))
+  
+  ## More informative name for column with climate parameter 
+  setnames(sum_by_poly, old = "V1", new = climate_var)
   
   
-  ## Save outputs
+  ## Return data.table with: year, month, polygon id, climate value 
   ## -----------------------------------------------
   
-  # Add a more informative column name for the climate parameter
-  clim_var    <- names(clim_raster) %>% tolower(.)
-  setnames(sum_by_poly, old = "V1", new = clim_var)
-  
+  return(sum_by_poly)
 
     
   }
