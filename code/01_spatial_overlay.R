@@ -12,7 +12,7 @@
 #' @return a data.table of geoweights (area weighted raster/polygon overlap)
 
 
-calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
+calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id){
   
   ## Setup 
   ## -----------------------------------------------
@@ -32,19 +32,19 @@ calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
   
   
   # Check with Anna on the file structure to call the demo data
-  # ncpath  <- file.path(here::here(), 'data/raw/demo')
-  # ncname  <- paste(data_source_norm, 'demo', sep="_")
-  # nc_file <- paste0(ncpath, ncname,'.nc')
+  ncpath  <- file.path(here::here('data/raw/demo/'))
+  ncname  <- paste(data_source_norm, 'demo', sep="_")
+  nc_file <- paste0(ncpath, ncname,'.nc')
   
   # For now just use the example ncdf file from Anna saved to my desktop
   # Example ERA5 file
-  ncpath <- "/Users/saraorofino/Desktop/"
-  ncname <- "era5_demo"  
-  nc_file <- paste0(ncpath, ncname, ".nc")
+  # ncpath <- "/Users/saraorofino/Desktop/"
+  # ncname <- "era5_demo"  
+  # nc_file <- paste0(ncpath, ncname, ".nc")
   
   
   # Create raster
-  clim_raster <- raster(nc_file)
+  clim_raster <- raster(nc_file) # only reads the first band
   
   ## Raster cell area 
   ## -----------------------------------------------
@@ -124,3 +124,12 @@ calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
 ## Test function 
 us_counties <- tigris::counties() #Input polygons for testing
 test_weights <- calc_geoweights(data_source = 'ERA5', input_polygons=us_counties, polygon_id='GEOID')
+
+# function to make weights based on a separate raster (ex cropland or population)
+## Weights from additional weights raster (using data.table) 
+## -----------------------------------------------
+if (!is.na(weights)){
+  if (weights == "cropland"){
+    # get the relevant world quadrants 
+  }
+}
