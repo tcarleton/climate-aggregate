@@ -30,17 +30,11 @@ calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
     stop(crayon::red('Unsupported climate data source. Supported formats are: era5'))
   }
   
-  
-  # Check with Anna on the file structure to call the demo data
-  # ncpath  <- file.path(here::here(), 'data/demo')
-  # ncname  <- paste(data_source_norm, 'demo', sep="_")
-  # nc_file <- paste0(ncpath, ncname,'.nc')
-  
-  # For now just use the example ncdf file from Anna saved to my desktop
-  # Example ERA5 file
-  ncpath <- "/Users/saraorofino/Desktop/"
-  ncname <- "era5_demo"  
-  nc_file <- paste0(ncpath, ncname, ".nc")
+
+  # Call the demo data (small example raster)
+  ncpath  <- file.path(here::here(), 'data', 'demo')
+  ncname  <- paste(data_source_norm, 'demo', sep="_")
+  nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
   
   # Create raster
@@ -138,7 +132,7 @@ calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
   message(crayon::yellow('Saving', save_name, 'to', save_path))
   
   # Save geoweights 
-  fwrite(geoweights[, w_sum := NULL], file = file.path(save_path, save_name))
+  fwrite(geoweights[, ':=' (gridNumber = NULL, w_sum = NULL)], file = file.path(save_path, save_name))
 
 
   ## Return weights 
