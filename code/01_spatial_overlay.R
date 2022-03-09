@@ -12,7 +12,7 @@
 #' @return a data.table of geoweights (area weighted raster/polygon overlap)
 
 
-calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
+calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id){
   
   ## Setup 
   ## -----------------------------------------------
@@ -30,7 +30,6 @@ calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
     stop(crayon::red('Unsupported climate data source. Supported formats are: era5'))
   }
   
-
   # Call the demo data (small example raster)
   ncpath  <- file.path(here::here(), 'data', 'demo')
   ncname  <- paste(data_source_norm, 'demo', sep="_")
@@ -38,7 +37,7 @@ calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
   
   
   # Create raster
-  clim_raster <- raster(nc_file)
+  clim_raster <- raster(nc_file) # only reads the first band
   
   ## Raster cell area 
   ## -----------------------------------------------
@@ -144,4 +143,3 @@ calc_geoweights <- function(data_source = 'era5', input_polygons, polygon_id){
 ## Test function 
 us_counties <- tigris::counties() #Input polygons for testing
 test_weights <- calc_geoweights(data_source = 'ERA5', input_polygons=us_counties, polygon_id='GEOID')
-
