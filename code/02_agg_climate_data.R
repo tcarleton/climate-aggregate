@@ -3,7 +3,7 @@
 ## Aggregate Climate Data: Pipeline Step 02
 
 ## Inputs so far: data_source, climate_var, year (one yr, multiple yrs?), input_polygons_name, nonlinearity transformation  
-agg_climate_data <- function(years, data_source, climate_var, input_polygons_name, nonlinear_transformation = 'polynomial') {
+agg_climate_data <- function(year, data_source, climate_var, input_polygons_name, trans = 'polynomial', trans_specs) {
   
   ## Setup 
   ## -----------------------------------------------
@@ -75,7 +75,7 @@ agg_climate_data <- function(years, data_source, climate_var, input_polygons_nam
   # Get layer names (dates)
   all_layers <- names(clim_raster)
   layer_names <- all_layers[seq(1, length(all_layers), 24)] # Keep every 24th layer name (1 per day)
-  layer_names <- paste0('month_', substring(layer_names, 7,8)) # Extract month for each layer (1 per day)
+  layer_names <- paste0('month_', substring(layer_names, 7,8), '_day_', substring(layer_names, 10,11)) # Extract month/day for each layer 
   
   ## Aggregate to grid-day level  
   ## -----------------------------------------------
@@ -84,33 +84,59 @@ agg_climate_data <- function(years, data_source, climate_var, input_polygons_nam
   indices<-rep(1:(nlayers(clim_raster)/24),each=24)
   clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=mean) #Stack of 365 layers
   
+  # For temperature convert values in Kelvin to Celsius C = K - 273.15
+  # Check that it's okay to do this with the daily values or if I should do it before collapsing by day
+  if(climate_var == 'temp'){
+    
+    clim_daily <- clim_daily - 237.15
+  }
   
   ## Nonlinearities 
   ## -----------------------------------------------
   
   
   # Simplest version of polynomial - just square the values
-  if(nonlinear_transformation == 'polynomial'){
+  if(trans == 'polynomial'){
     
-    # For each daily layer, square the values in each grid cell 
-    clim_nonlinear <- raster::calc(clim_daily, fun=function(x){x ^ 2}) 
+    k <- trans_specs
+    poly_orders <- seq(1:k) # Compute values from 1 to K 
+    list_length <- length(poly_orders) # How many lists are in the final object 
+    list_names <- sapply(1:list_length, FUN=function(x){paste("order", poly_orders[x], sep="_")})
     
+    # For each daily layer, raise the value to k, k-1, k-2 etc. until 1
+    r <- lapply(poly_orders, FUN=function(x){clim_daily_s ^ x})
+    
+    ## Function: Set names of data table by month, change from wide to long format, rename based on polynomial orders
+    create_dt <- function(x){
+      
+      # Should output raster cells x/y with 365 days as column names
+      dt <- as.data.table.raster(r[[x]], xy=TRUE)
+      
+      # Set column names with months
+      new_names <- c('x', 'y', layer_names)
+      setnames(dt, new_names)
+      
+      # Change from wide to long format
+      dt = melt(dt, id.vars = c("x", "y"))
+      
+      # Update variable names 
+      var_names <- c('date', list_names[x])
+      setnames(dt, old=c('variable', 'value'), new=var_names)
+    }
+    
+    # Make each raster a data.table 
+    list_dt <- lapply(1:list_length, create_dt) 
+    
+    # Merge all data tables together
+    # Note: a non for loop way to do this? I tried rbindlist, bind_rows but those options don't join on x,y,month so I'm getting a table triple the size 
+    clim_dt <- list_dt[[1]]
+    for(i in 2:list_length){
+      dt_m <- list_dt[[i]]
+      clim_dt <- merge(clim_dt, dt_m, by=c('x', 'y', 'date'))
+    }
+
   }
   
-  ## Later on: add more options based on other input values
-
-  
-  # Convert the daily climate raster to data.table
-  # Should output raster cells x/y with 365 days as column names
-  clim_dt <- as.data.table.raster(clim_nonlinear, xy = TRUE)
-  
-  # Set column names with dates
-  new_names <- c('x', 'y', layer_names)
-  setnames(clim_dt, new_names)
-  
-  # Change from wide to long format
-  clim_dt = melt(clim_dt, id.vars = c("x", "y"))
-  setnames(clim_dt, old='variable', new='month')
   
   ## Merge weights with climate raster 
   ## -----------------------------------------------
@@ -120,35 +146,56 @@ agg_climate_data <- function(years, data_source, climate_var, input_polygons_nam
   setkeyv(clim_dt, keycols)
 
   # Keyed merge on the x/y column 
-  merged_dt <- clim_dt[weights, allow.cartesian = T] #6 cols: x, y, month, value, poly_id, and w_geo
+  merged_dt <- clim_dt[weights, allow.cartesian = T] #cols: x, y, date, value cols 1:k, poly_id, and w_geo
   
  
-  ## Multiply weights x climate value; aggregate by month and polygon  
+  ## Multiply weights x climate value (all 1:k values); aggregate by month and polygon  
   ## -----------------------------------------------
+
+  merged_dt[, (list_names) := lapply(list_names, function(x) {get(x) * w_geo})]
   
-  ## Note this is not the same as below - geoweighted value in each grid cell, then summed by month and polygon
-  merged_dt[, weighted_value := value * w_geo]
-  sum_by_poly <- merged_dt[, sum(weighted_value), by = .(poly_id, month)]
+  # Separate month and day columns 
+  merged_dt[, ':=' (month = substring(date, first=1, last=8),
+                    day = substring(date, first=10))]
   
-  ## This is weighted mean of climate value by month and polygon (NOT a sum of the weighted mean of each cell) 
-  # test <- merged_dt[, lapply(.SD, weighted.mean, w = w_geo, na.rm = T),
-  #           by = .(poly_id, month),
-  #           .SDcols = 'value']
+  # Can customize this in the future to aggregate by day & month 
+  # Right now just sum by month 
+  sum_by_poly <- merged_dt[,  lapply(.SD, sum), by = .(poly_id, month),
+                           .SDcols = list_names]
   
   ## Add year column 
-  sum_by_poly[, year := year] # Make sure this matches with the in parallel (might need to be x or something else)
+  sum_by_poly[, year := year] 
   
   ## Order columns 
-  setcolorder(sum_by_poly, neworder = c('year', 'month', 'poly_id', 'V1'))
-  
-  ## More informative name for column with climate parameter 
-  setnames(sum_by_poly, old = "V1", new = climate_var)
+  setcolorder(sum_by_poly, neworder = c('year', 'month', 'poly_id', list_names))
   
   
-  ## Return data.table with: year, month, polygon id, climate value 
+  ## Save data.table with: year, month, polygon id, climate values (1-K)
   ## -----------------------------------------------
   
-  return(sum_by_poly)
+  # Check if there is already an int/ folder
+  if(!dir.exists(here::here("data", "int", "aggregated_data"))){
+    
+    # If no - create it
+    message(crayon::yellow('Creating data/int/aggregated_data'))
+    dir.create(here::here("data", "int", "aggregated_data"), recursive=T)
+    
+  }
+  
+  # File save name
+  polygon_input_name <- deparse(substitute(input_polygons))
+  save_name <- paste0(paste(polygon_input_name, data_source_norm, climate_var, year, trans, trans_specs, sep="_"), ".csv")
+  save_path <- file.path(here::here(), "data", "int", "aggregated_data")
+  
+  # Save message
+  message(crayon::yellow('Saving', save_name, 'to', save_path))
+  
+  # Save geoweights 
+  fwrite(sum_by_poly, file = file.path(save_path, save_name))
+  
+  ## Done
+  ## -----------------------------------------------
+  message(crayon::green('Done'))
 
     
   }
