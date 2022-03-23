@@ -123,8 +123,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id){
   }
   
   # File save name
-  polygon_input_name <- deparse(substitute(input_polygons))
-  save_name <- paste0(paste(polygon_input_name, data_source_norm, sep="_"), ".csv")
+  save_name <- paste0(paste(input_polygons_name, data_source_norm, sep="_"), ".csv")
   save_path <- file.path(here::here(), "data", "int", "geoweights")
   
   # Save message
