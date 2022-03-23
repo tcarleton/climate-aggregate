@@ -2,8 +2,7 @@
 ## February 22, 2022
 ## Aggregate Climate Data: Pipeline Step 02
 
-## Inputs so far: data_source, climate_var, year (one yr, multiple yrs?), input_polygons_name, nonlinearity transformation  
-agg_climate_data <- function(year, data_source, climate_var, input_polygons_name, trans = 'polynomial', trans_specs) {
+agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial', trans_specs) {
   
   ## Setup 
   ## -----------------------------------------------
@@ -38,8 +37,7 @@ agg_climate_data <- function(year, data_source, climate_var, input_polygons_name
   data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
   
   # File name to call the weights
-  polygon_name <- deparse(substitute(input_polygons_name))
-  weights_file <- paste0(paste(polygon_name, data_source_norm, sep="_"), ".csv")
+  weights_file <- paste0(paste(input_polygons_name, data_source_norm, sep="_"), ".csv")
   
   # Data.table of geoweights 
   weights <- fread(file.path(here::here(), "data", "int", "geoweights", weights_file))
@@ -176,11 +174,11 @@ agg_climate_data <- function(year, data_source, climate_var, input_polygons_name
   }
 
 # function to call agg_climate_data over multiple years in parallel
-agg_climate_data_multiyear <- function(years, data_source, climate_var, input_polygons_name, trans = 'polynomial', trans_specs){
+agg_climate_data_multiyear <- function(years, data_source, climate_var, trans = 'polynomial', trans_specs){
   
   no_cores <- detectCores() - 1 # Calculate the number of cores. Leave one in case something else needs to be done on the same computer at the same time. 
   cl <- makeCluster(no_cores, type="FORK") # Initiate cluster. "FORK" means bring everything in your current environment with you. 
-  sum_by_poly_multiyear <- parLapply(cl, years, agg_climate_data, data_source, climate_var, input_polygons_name, nonlinear_transformation)
+  sum_by_poly_multiyear <- parLapply(cl, years, agg_climate_data, data_source, climate_var, trans, trans_specs)
   stopCluster(cl)
   
   sum_by_poly_multiyear <- rbindlist(sum_by_poly_multiyear)
@@ -195,9 +193,8 @@ agg_climate_data_multiyear <- function(years, data_source, climate_var, input_po
   }
   
   # File save name
-  poly_name <- deparse(substitute(input_polygons_name))
   data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
-  save_name <- paste0(paste(poly_name, data_source_norm, climate_var, years, trans, trans_specs, sep="_"), ".csv")
+  save_name <- paste0(paste(input_polygons_name, data_source_norm, climate_var, years, trans, trans_specs, sep="_"), ".csv")
   save_path <- file.path(here::here(), "data", "int", "aggregated_data")
   
   # Save message
