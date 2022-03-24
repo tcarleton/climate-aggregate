@@ -12,8 +12,8 @@ input_polygons <- tigris::counties()
 climate_data <- 'era5'
 input_polygons_name <- 'us_counties'
 id_var <- 'GEOID' #col name that uniquely identifies each polygon 
-years <- 2000:2020
-climate_variable <- 'prcp'
+years <- 2005:2010
+climate_variable <- 'temp'
 trans <- 'polynomial'
 trans_specs <- 3
 
