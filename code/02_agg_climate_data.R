@@ -183,19 +183,19 @@ agg_climate_data_multiyear <- function(years, data_source, climate_var, trans = 
   
   sum_by_poly_multiyear <- rbindlist(sum_by_poly_multiyear)
   
-  # Check if there is already an int/ folder
-  if(!dir.exists(here::here("data", "int", "aggregated_data"))){
+  # Check if there is already an output folder
+  if(!dir.exists(here::here("data", "output"))){
     
     # If no - create it
-    message(crayon::yellow('Creating data/int/aggregated_data'))
-    dir.create(here::here("data", "int", "aggregated_data"), recursive=T)
+    message(crayon::yellow('Creating data/output'))
+    dir.create(here::here("data", "output"), recursive=T)
     
   }
   
   # File save name
   data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
   save_name <- paste0(paste(input_polygons_name, data_source_norm, climate_var, years, trans, trans_specs, sep="_"), ".csv")
-  save_path <- file.path(here::here(), "data", "int", "aggregated_data")
+  save_path <- file.path(here::here(), "data", "output")
   
   # Save message
   message(crayon::yellow('Saving', save_name, 'to', save_path))
