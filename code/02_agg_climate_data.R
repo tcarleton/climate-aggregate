@@ -7,7 +7,7 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   ## Setup 
   ## -----------------------------------------------
   require(pacman)
-  pacman::p_load(ncdf4, data.table, rgdal, raster, lazyraster, tidyverse, here, crayon)
+  pacman::p_load(ncdf4, data.table, rgdal, raster, tidyverse, here, crayon)
 
   # Function to convert raster to data.table from https://gist.github.com/etiennebr/9515738
   as.data.table.raster <- function(x, row.names = NULL, optional = FALSE, xy=FALSE, inmem = canProcessInMemory(x, 2), ...) {
