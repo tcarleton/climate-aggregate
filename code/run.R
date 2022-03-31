@@ -1,16 +1,21 @@
 ## Run Climate Functions
 
+## Load packages necessary for sourcing functions/setup
+library(tidyverse)
+library(sf)
+library(here)
+
 ## Load functions
 source(here::here('code', '01_spatial_overlay.R'))
 source(here::here('code', '02_agg_climate_data.R'))
 
 ## Load other required data (i.e. input polygons)
-input_polygons <- tigris::counties()
+# Testing with CA counties
+input_polygons <- read_sf(file.path(here::here(), "data", "shapefiles", "tl_2019_us_county", "tl_2019_us_county.shp")) %>% dplyr::filter(STATEFP == '06')
 
 ## Inputs - update as necessary 
-# Note: input polygons and input_polygon_name vars have to be entered directly into the functions
 climate_data <- 'era5'
-input_polygons_name <- 'us_counties'
+input_polygons_name <- 'ca_counties'
 id_var <- 'GEOID' #col name that uniquely identifies each polygon 
 years <- 2005:2010
 climate_variable <- 'temp'
@@ -25,7 +30,6 @@ both_steps <- TRUE
 # both_steps = T run both, else run step 2 only 
 if(both_steps){
   
-  # Edit input polygons 
   calc_geoweights(data_source = climate_data,
                   input_polygons = input_polygons,
                   polygon_id = id_var)
@@ -33,7 +37,6 @@ if(both_steps){
 
 } 
   
-# Edit input_polygon_names
 agg_climate_data_multiyear(years = years,
                            data_source = climate_data,
                            climate_var = climate_variable,
