@@ -176,7 +176,9 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
 # function to call agg_climate_data over multiple years in parallel
 agg_climate_data_multiyear <- function(years, data_source, climate_var, trans = 'polynomial', trans_specs){
   
-  no_cores <- detectCores() - 1 # Calculate the number of cores. Leave one in case something else needs to be done on the same computer at the same time. 
+  library(parallel)
+  
+  no_cores <- parallel::detectCores() - 1 # Calculate the number of cores. Leave one in case something else needs to be done on the same computer at the same time. 
   cl <- makeCluster(no_cores, type="FORK") # Initiate cluster. "FORK" means bring everything in your current environment with you. 
   sum_by_poly_multiyear <- parLapply(cl, years, agg_climate_data, data_source, climate_var, trans, trans_specs)
   stopCluster(cl)
