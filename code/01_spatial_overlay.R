@@ -66,18 +66,18 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id){
   }
   
   # Check longitude ranges match (with a tolerance of 1 in case lon +- 179 vs. +-180)
-  poly_range <- c(extent(input_polygons)@xmin, extent(input_polygons)@xmax)
-  rast_range <- c(extent(clim_area_raster)@xmin, extent(clim_area_raster)@xmax)
-  
-  if(dplyr::near(poly_range[1], rast_range[1], tol=1.01) & dplyr::near(poly_range[2], rast_range[2], tol=1.01)){
-    
-    message(crayon::green('Longitude ranges match'))
-    
-  } else {
-    
-    stop(crayon::red('Raster and polygon longitude ranges do not match'))
-    
-  }
+  # poly_range <- c(extent(input_polygons)@xmin, extent(input_polygons)@xmax)
+  # rast_range <- c(extent(clim_area_raster)@xmin, extent(clim_area_raster)@xmax)
+  # 
+  # if(dplyr::near(poly_range[1], rast_range[1], tol=1.01) & dplyr::near(poly_range[2], rast_range[2], tol=1.01)){
+  #   
+  #   message(crayon::green('Longitude ranges match'))
+  #   
+  # } else {
+  #   
+  #   stop(crayon::red('Raster and polygon longitude ranges do not match'))
+  #   
+  # }
   
   # Match raster and polygon crs 
   crs_raster <- crs(clim_area_raster)
