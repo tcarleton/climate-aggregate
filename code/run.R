@@ -14,13 +14,17 @@ source(here::here('code', '02_agg_climate_data.R'))
 input_polygons <- read_sf(file.path(here::here(), "data", "shapefiles", "tl_2019_us_county", "tl_2019_us_county.shp")) %>% dplyr::filter(STATEFP == '06')
 
 ## Inputs - update as necessary 
-climate_data <- 'era5'
-input_polygons_name <- 'ca_counties'
-id_var <- 'GEOID' #col name that uniquely identifies each polygon 
-years <- 2005:2010
-climate_variable <- 'temp'
-trans <- 'polynomial'
-trans_specs <- 3
+# Defined - must match one of the options
+climate_data <- 'era5' # era5 is only option for now
+climate_variable <- 'temp' # temp, prcp, or uv
+years <- 2005:2010 # any sequence of years 2002:2020
+trans <- 'polynomial' # polynomial is only option for now
+trans_specs <- 3 # Specs must match the trans type, numeric when trans=polynomial
+id_var <- 'GEOID' # Col name in the input_polygons shp that uniquely identifies each polygon 
+
+# Flexible - not limited to specific options
+input_polygons_name <- 'ca_counties' # Name used in saving function outputs; should relate to the polygons used
+
 
 ## Steps to run 
 # Specify if you need to run step 1 and step 2
