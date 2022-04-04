@@ -177,13 +177,14 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
 agg_climate_data_multiyear <- function(years, data_source, climate_var, trans = 'polynomial', trans_specs){
   
   library(parallel)
+  library(data.table)
   
   no_cores <- parallel::detectCores() - 1 # Calculate the number of cores. Leave one in case something else needs to be done on the same computer at the same time. 
   cl <- makeCluster(no_cores, type="FORK") # Initiate cluster. "FORK" means bring everything in your current environment with you. 
   sum_by_poly_multiyear <- parLapply(cl, years, agg_climate_data, data_source, climate_var, trans, trans_specs)
   stopCluster(cl)
   
-  sum_by_poly_multiyear <- rbindlist(sum_by_poly_multiyear)
+  sum_by_poly_multiyear <- data.table::rbindlist(sum_by_poly_multiyear)
   
   # Check if there is already an output folder
   if(!dir.exists(here::here("data", "output"))){
@@ -196,7 +197,8 @@ agg_climate_data_multiyear <- function(years, data_source, climate_var, trans = 
   
   # File save name
   data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
-  save_name <- paste0(paste(input_polygons_name, data_source_norm, climate_var, years, trans, trans_specs, sep="_"), ".csv")
+  save_name <- paste0(paste(input_polygons_name, data_source_norm, climate_var,
+                            years[1], years[length(years)], trans, trans_specs, sep="_"), ".csv")
   save_path <- file.path(here::here(), "data", "output")
   
   # Save message
