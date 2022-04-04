@@ -102,7 +102,7 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
     list_names <- sapply(1:list_length, FUN=function(x){paste("order", poly_orders[x], sep="_")})
     
     # For each daily layer, raise the value to k, k-1, k-2 etc. until 1
-    r <- lapply(poly_orders, FUN=function(x){clim_daily_s ^ x})
+    r <- lapply(poly_orders, FUN=function(x){clim_daily ^ x})
     
     ## Function: Set names of data table by month, change from wide to long format, rename based on polynomial orders
     create_dt <- function(x){
