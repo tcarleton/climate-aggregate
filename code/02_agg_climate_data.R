@@ -86,7 +86,7 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   # Check that it's okay to do this with the daily values or if I should do it before collapsing by day
   if(climate_var == 'temp'){
     
-    clim_daily <- clim_daily - 237.15
+    clim_daily <- clim_daily - 273.15
   }
   
   ## Nonlinearities 
