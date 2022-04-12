@@ -79,20 +79,48 @@ check_out2 <- out_2 %>%
 check_nas <- out_2 %>% 
   filter(is.na(order_1) | is.na(order_2) | is.na(order_3)) # Just the 5 counties in each year (30 total)
 
+na_counties <- ca_counties %>% 
+  filter(GEOID %in% c('06015', '06023', '06025', '06071', '06073')) # San Diego, San Bernardino, Humboldt, Del Norte, Imperial 
+
+# Convert the first order to avg temp by month so it's easier to understand the values 
+# use value / days in month 
+out_2 <- out_2 %>% 
+  mutate(days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
+                                   month == 'month_02' & year == 2008 ~ 29,
+                                   month == 'month_02' & year != 2008 ~ 28, 
+                                   TRUE ~ 31)) %>% 
+  mutate(order_1_avg = order_1 / days_in_month)
+
+# Check leap years
+feb <- out_2 %>% 
+  filter(month == 'month_02')
+
+leap_plot <- ggplot() + 
+  geom_line(data = feb, aes(x = year, y = order_1, color = as.factor(poly_id), group = poly_id)) + 
+  geom_vline(xintercept = 2008,
+             linetype = 'longdash') + 
+  scale_x_continuous(expand = c(0,0),
+                   breaks = seq(2005, 2010, by=1)) + 
+  labs(x = 'Year',
+       y = 'Avg February Temperatures') + 
+  theme_bw() + 
+  theme(legend.position = '')
+
+## Graphs 
 # Polynomial values over time by polygon (one graph for each polynomial order)
 poly1_plot <- ggplot() + 
-  geom_line(data = out_2, aes(x = month, y = order_1, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = out_2, aes(x = month, y = order_1_avg, color = as.factor(poly_id), group = poly_id)) + 
   facet_wrap(~year) + 
   scale_x_discrete(expand = c(0,0),
                    breaks = c('month_01', 'month_03', 'month_05',
                               'month_07', 'month_09', 'month_11'),
                    labels = c('Jan', 'Mar', 'May', 'Jul',
                               'Sept', 'Nov')) + 
-  scale_y_continuous(expand = c(0,0),
-                     limits = c(800,2400),
-                     breaks = seq(800,2400,400)) + 
+  # scale_y_continuous(expand = c(0,0),
+  #                    limits = c(800,2400),
+  #                    breaks = seq(800,2400,400)) + 
   labs(x = 'Month',
-       y = 'Summed Monthly Temperature (First Order)') + 
+       y = 'Averarge Monthly Temp\n(First Order / Days in Month)') + 
   theme_bw() + 
   theme(legend.position = '')
 
@@ -126,6 +154,7 @@ poly3_plot <- ggplot() +
   theme_bw() + 
   theme(legend.position = '')
 
+## Maps 
 # Join first order outputs to the shp 
 ca_counties <- ca_counties %>% 
   mutate(poly_id = as.numeric(GEOID)) %>% 
@@ -140,8 +169,8 @@ out2_sf <- merge(ca_counties, out_2, all = TRUE)
 map_order1_feb <- out2_sf %>% 
   filter(month == 'month_02') %>% 
   ggplot() + 
-  geom_sf(aes(fill = order_1)) + 
-  labs(fill = 'Summed Feb\nTemperature\n(1st Order)',
+  geom_sf(aes(fill = order_1_avg)) + 
+  labs(fill = 'Avg Feb\nTemperature\n(1st Order)',
        x = '',
        y = '') + 
   scale_fill_viridis_c() + 
@@ -152,8 +181,8 @@ map_order1_feb <- out2_sf %>%
 map_order1_jul <- out2_sf %>% 
   filter(month == 'month_07') %>% 
   ggplot() + 
-  geom_sf(aes(fill = order_1)) + 
-  labs(fill = 'Summed July\nTemperature\n(1st Order)',
+  geom_sf(aes(fill = order_1_avg)) + 
+  labs(fill = 'Avg July\nTemperature\n(1st Order)',
        x = '',
        y = '') + 
   scale_fill_viridis_c() + 
