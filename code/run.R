@@ -29,7 +29,7 @@ input_polygons_name <- 'ca_counties' # Name used in saving function outputs; sho
 ## Steps to run 
 # Specify if you need to run step 1 and step 2
 # If TRUE runs both, if FALSE runs step 2 only 
-both_steps <- TRUE
+both_steps <- FALSE
 
 # both_steps = T run both, else run step 2 only 
 if(both_steps){
