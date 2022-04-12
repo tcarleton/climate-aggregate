@@ -115,10 +115,10 @@ poly1_plot <- ggplot() +
                    breaks = c('month_01', 'month_03', 'month_05',
                               'month_07', 'month_09', 'month_11'),
                    labels = c('Jan', 'Mar', 'May', 'Jul',
-                              'Sept', 'Nov')) + 
-  # scale_y_continuous(expand = c(0,0),
-  #                    limits = c(800,2400),
-  #                    breaks = seq(800,2400,400)) + 
+                              'Sept', 'Nov')) +
+  scale_y_continuous(expand = c(0,0),
+                     limits = c(-10,40),
+                     breaks = seq(-10,40,10)) +
   labs(x = 'Month',
        y = 'Averarge Monthly Temp\n(First Order / Days in Month)') + 
   theme_bw() + 
@@ -133,7 +133,7 @@ poly2_plot <- ggplot() +
                    labels = c('Jan', 'Mar', 'May', 'Jul',
                               'Sept', 'Nov')) + 
   scale_y_continuous(expand = c(0,0),
-                     limits = c(26000,163000)) +
+                     limits = c(100,42000)) +
   labs(x = 'Month',
        y = 'Summed Monthly Temperature (Second Order)') + 
   theme_bw() + 
