@@ -16,6 +16,9 @@ out_1 <- read_csv(file.path(here::here(), "data", "int", "geoweights", "ca_count
 # Step 2 output
 out_2 <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_temp_2005_2010_polynomial_3.csv"))
 
+# Compare Step 2 output with crop weights 
+out_2_crop <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_temp_2005_2010_polynomial_3_crop_weights.csv"))
+  
 # CA county shapefile for checking maps
 us_counties <- tigris::counties()
 ca_counties <- us_counties %>% 
@@ -171,6 +174,7 @@ map_order1_feb <- out2_sf %>%
   ggplot() + 
   geom_sf(aes(fill = order_1_avg)) + 
   labs(fill = 'Avg Feb\nTemperature\n(1st Order)',
+       title = 'area weights',
        x = '',
        y = '') + 
   scale_fill_viridis_c() + 
@@ -183,10 +187,50 @@ map_order1_jul <- out2_sf %>%
   ggplot() + 
   geom_sf(aes(fill = order_1_avg)) + 
   labs(fill = 'Avg July\nTemperature\n(1st Order)',
+       title = 'area weights',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c() + 
+  facet_wrap(~year) + 
+  theme_bw() 
+
+## Maps for output with crop weights 
+# Convert the first order to avg temp by month so it's easier to understand the values 
+out_2_crop <- out_2_crop %>% 
+  mutate(days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
+                                   month == 'month_02' & year == 2008 ~ 29,
+                                   month == 'month_02' & year != 2008 ~ 28, 
+                                   TRUE ~ 31)) %>% 
+  mutate(order_1_avg = order_1 / days_in_month)
+
+out2_crop_sf <- merge(ca_counties, out_2_crop, all = TRUE)
+
+# Map first order values by county for lowest temp month (Feb) 
+map_order1_feb_crop <- out2_crop_sf %>% 
+  filter(month == 'month_02') %>% 
+  ggplot() + 
+  geom_sf(aes(fill = order_1_avg)) + 
+  labs(fill = 'Avg Feb\nTemperature\n(1st Order)',
+       title = 'area + crop weights',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c() + 
+  facet_wrap(~year) + 
+  theme_bw() 
+
+# Map first order values for highest temp month (July)
+map_order1_jul_crop <- out2_crop_sf %>% 
+  filter(month == 'month_07') %>% 
+  ggplot() + 
+  geom_sf(aes(fill = order_1_avg)) + 
+  labs(fill = 'Avg July\nTemperature\n(1st Order)',
+       title = 'area + crop weights',
        x = '',
        y = '') + 
   scale_fill_viridis_c() + 
   facet_wrap(~year) + 
   theme_bw() 
 ```
+
+
 
