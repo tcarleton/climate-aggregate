@@ -2,7 +2,7 @@
 ## February 22, 2022
 ## Aggregate Climate Data: Pipeline Step 02
 
-agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial', trans_specs) {
+agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial', trans_specs, weights) {
   
   ## Setup 
   ## -----------------------------------------------
@@ -36,23 +36,21 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   # Normalize the data source input - remove spaces & lower case
   data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
   
-  # File name to call the weights
-  weights_file <- paste0(paste(input_polygons_name, data_source_norm, sep="_"), ".csv")
+  # File name to call the geoweights
+  geoweights_file <- paste0(paste(input_polygons_name, data_source_norm, sep="_"), ".csv")
   
   # Data.table of geoweights 
-  weights <- fread(file.path(here::here(), "data", "int", "geoweights", weights_file))
+  geoweights <- fread(file.path(here::here(), "data", "int", "geoweights", geoweights_file))
   # Convert 0-360 to match climate raster
-  weights[, x := ifelse(x < 0, x + 360, x)]
+  geoweights[, x := ifelse(x < 0, x + 360, x)]
   
-  # Extent of geoweights 
-  min_x <- min(weights$x)
-  max_x <- max(weights$x)
-  min_y <- min(weights$y)
-  max_y <- max(weights$y)
+  # Extent of geoweights with slight buffer to make sure all cells are included 
+  min_x <- min(geoweights$x) - 0.5
+  max_x <- max(geoweights$x) + 0.5
+  min_y <- min(geoweights$y) - 0.5
+  max_y <- max(geoweights$y) + 0.5
   
-  weights_ext <- raster::extent(min_x, max_x, min_y, max_y)
-  
-  ### Will be the start of in parallel 
+  geoweights_ext <- raster::extent(min_x, max_x, min_y, max_y)
   
   ## Load climate data 
   ## -----------------------------------------------
@@ -68,7 +66,7 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
   # Immediately crop to weights extent 
-  clim_raster <- raster::crop(raster::stack(nc_file), weights_ext)
+  clim_raster <- raster::crop(raster::stack(nc_file), geoweights_ext)
   
   # Get layer names (dates)
   all_layers <- names(clim_raster)
@@ -83,7 +81,6 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=mean) #Stack of 365 layers
   
   # For temperature convert values in Kelvin to Celsius C = K - 273.15
-  # Check that it's okay to do this with the daily values or if I should do it before collapsing by day
   if(climate_var == 'temp'){
     
     clim_daily <- clim_daily - 273.15
@@ -93,7 +90,7 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   ## -----------------------------------------------
   
   
-  # Simplest version of polynomial - just square the values
+  # Polynomial 
   if(trans == 'polynomial'){
     
     k <- trans_specs
@@ -122,11 +119,10 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
       setnames(dt, old=c('variable', 'value'), new=var_names)
     }
     
-    # Make each raster a data.table 
+    # Make each raster layer a data.table 
     list_dt <- lapply(1:list_length, create_dt) 
     
     # Merge all data tables together
-    # Note: a non for loop way to do this? I tried rbindlist, bind_rows but those options don't join on x,y,month so I'm getting a table triple the size 
     clim_dt <- list_dt[[1]]
     for(i in 2:list_length){
       dt_m <- list_dt[[i]]
@@ -135,8 +131,7 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
 
   }
   
-  
-  ## Merge weights with climate raster 
+  ## Merge area weights with climate raster 
   ## -----------------------------------------------
   
   # Set key column in the climate data table
@@ -144,13 +139,40 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   setkeyv(clim_dt, keycols)
 
   # Keyed merge on the x/y column 
-  merged_dt <- clim_dt[weights, allow.cartesian = T] #cols: x, y, date, value cols 1:k, poly_id, and w_geo
+  merged_dt <- clim_dt[geoweights] #cols: x, y, date, value cols 1:k, poly_id, w_geo
   
+  ## Add secondary weights if weights = TRUE
+  ## -----------------------------------------------
+  
+  if(weights){
+    
+    # File name for secondary weights 
+    weights_file <- paste0(weights_name, '.csv')
+    
+    # Data.table of secondary weights 
+    weights_dt <- fread(file.path(here::here(), "data", "int", "rasterweights", weights_file))
+    
+    # Convert 0-360 to match geoweights and climate raster
+    weights_dt[, x := ifelse(x < 0, x + 360, x)]
+    
+    # Set key column in the merged dt table
+    keycols = c("x", "y")
+    setkeyv(merged_dt, keycols)
+    
+    # Merge with secondary weights
+    merged_dt <- merged_dt[weights_dt, nomatch = 0]
+  }
  
   ## Multiply weights x climate value (all 1:k values); aggregate by month and polygon  
   ## -----------------------------------------------
 
-  merged_dt[, (list_names) := lapply(list_names, function(x) {get(x) * w_geo})]
+  # Multiply by both area weights and secondary weights if weights = TRUE 
+  # Otherwise multiply by just area weights 
+  if(weights){
+    merged_dt[, (list_names) := lapply(list_names, function(x) {get(x) * w_geo * weight})]
+  } else {
+    merged_dt[, (list_names) := lapply(list_names, function(x) {get(x) * w_geo})]
+  }
   
   # Separate month and day columns 
   merged_dt[, ':=' (month = substring(date, first=1, last=8),
@@ -174,14 +196,14 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   }
 
 # function to call agg_climate_data over multiple years in parallel
-agg_climate_data_multiyear <- function(years, data_source, climate_var, trans = 'polynomial', trans_specs){
+agg_climate_data_multiyear <- function(years, data_source, climate_var, trans = 'polynomial', trans_specs, weights){
   
   library(parallel)
   library(data.table)
   
   no_cores <- parallel::detectCores() - 1 # Calculate the number of cores. Leave one in case something else needs to be done on the same computer at the same time. 
   cl <- makeCluster(no_cores, type="FORK") # Initiate cluster. "FORK" means bring everything in your current environment with you. 
-  sum_by_poly_multiyear <- parLapply(cl, years, agg_climate_data, data_source, climate_var, trans, trans_specs)
+  sum_by_poly_multiyear <- parLapply(cl, years, agg_climate_data, data_source, climate_var, trans, trans_specs, weights)
   stopCluster(cl)
   
   sum_by_poly_multiyear <- data.table::rbindlist(sum_by_poly_multiyear)
@@ -197,8 +219,17 @@ agg_climate_data_multiyear <- function(years, data_source, climate_var, trans = 
   
   # File save name
   data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
-  save_name <- paste0(paste(input_polygons_name, data_source_norm, climate_var,
+  
+  # If secondary weights are used add to save name
+  # Otherwise just include other inputs
+  if(weights){
+    save_name <- paste0(paste(input_polygons_name, data_source_norm, climate_var,
+                            years[1], years[length(years)], trans, trans_specs, weights_type, 'weights', sep="_"), ".csv")
+  } else{
+    save_name <- paste0(paste(input_polygons_name, data_source_norm, climate_var,
                             years[1], years[length(years)], trans, trans_specs, sep="_"), ".csv")
+  }
+  
   save_path <- file.path(here::here(), "data", "output")
   
   # Save message
