@@ -124,4 +124,3 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id){
   message(crayon::green('Done'))
   
 }
-
