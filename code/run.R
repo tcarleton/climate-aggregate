@@ -21,9 +21,12 @@ years <- 2005:2010 # any sequence of years 2002:2020
 trans <- 'polynomial' # polynomial is only option for now
 trans_specs <- 3 # Specs must match the trans type, numeric when trans=polynomial
 id_var <- 'GEOID' # Col name in the input_polygons shp that uniquely identifies each polygon 
+weights <- TRUE # True to define a second set of weights, FALSE to use only area weights
 
 # Flexible - not limited to specific options
 input_polygons_name <- 'ca_counties' # Name used in saving function outputs; should relate to the polygons used
+weights_type <- 'crop' # Added to the name of the output file to indicate what secondary weights are used 
+weights_name <- 'era5_cropland_2003_full' # The name of the secondary weights file, cannot be blank if weights = TRUE
 
 
 ## Steps to run 
@@ -45,4 +48,5 @@ agg_climate_data_multiyear(years = years,
                            data_source = climate_data,
                            climate_var = climate_variable,
                            trans = trans,
-                           trans_specs = trans_specs)
+                           trans_specs = trans_specs,
+                           weights = weights)
