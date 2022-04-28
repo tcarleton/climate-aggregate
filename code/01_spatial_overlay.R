@@ -12,7 +12,7 @@
 #' @return a data.table of geoweights (area weighted raster/polygon overlap)
 
 
-calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id){
+calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, weights){
   
   ## Setup 
   ## -----------------------------------------------
@@ -70,54 +70,121 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id){
   polygons_reproj <- input_polygons %>% 
     st_transform(crs = crs_raster)
   
-  ## Geoweights (using data.table) 
+  ## Raster / Polygon overlap (using data.table) 
   ## -----------------------------------------------
   message(crayon::yellow('Extracting raster polygon overlap'))
     
-  geoweights <- rbindlist(exactextractr::exact_extract(clim_area_raster, polygons_reproj, progress = T, include_cell = T, include_xy = T), idcol = "poly_id")
-  geoweights[, ':=' (poly_id = polygons_reproj[[polygon_id]][poly_id], cell_area_km2 = value)] # Add the unique id for each polygon based on the input col name
-  geoweights <- geoweights[, .(gridNumber = cell, x, y, poly_id, w_geo = coverage_fraction * cell_area_km2)] # Geoweight = area km2 * coverage fraction 
-  geoweights[, w_geo := w_geo / sum(w_geo), by = poly_id] # Normalize by polygon
+  overlap <- rbindlist(exactextractr::exact_extract(clim_area_raster, polygons_reproj, progress = T, include_xy = T), idcol = "poly_id")
+  overlap[, ':=' (poly_id = polygons_reproj[[polygon_id]][poly_id], cell_area_km2 = value)] # Add the unique id for each polygon based on the input col name
+  
+  
+  ## Calculate weights  
+  ## -----------------------------------------------
+  
+  # Calculate area weight per grid cell 
+  area_weight <- overlap[, .(x, y, poly_id, coverage_fraction, w_area = coverage_fraction * cell_area_km2)] # area weight = area km2 * coverage fraction 
+  
+  # IF weights = TRUE, merge secondary weights with area weights
+  if(weights){
+    
+    # File name for secondary weights 
+    weights_file <- paste0(weights_name, '.csv')
+    
+    # Data.table of secondary weights 
+    weights_dt <- fread(file.path(here::here(), "data", "int", "rasterweights", weights_file))
+    
+    # Set key column in the merged dt table
+    keycols = c("x", "y")
+    setkeyv(area_weight, keycols)
+    
+    # Merge with secondary weights
+    w_merged <- area_weight[weights_dt, nomatch = 0]
+    
+    # Weight in pixel = coverage fraction * weight
+    w_merged[, weight := weight * coverage_fraction]
+    
+  }
+
+  # Normalize weights by polygon
+  if(weights){
+    
+    w_norm <- w_merged[, w_area := w_area / sum(w_area), by = poly_id]
+    w_norm[, weight := weight / sum(weight), by = poly_id]
+    
+  } else {
+    w_norm <- area_weight[, w_area := w_area / sum(w_area), by = poly_id]
+  }
 
   
   message(crayon::yellow('Checking sum of weights within polygons'))
-  check_weights <- geoweights[, w_sum := sum(w_geo), by=poly_id]
-  
-  # Check that each polygon sums to 1, if not error w/polygon id 
-  for(i in nrow(check_weights)){
+  if(weights){
     
-    if(check_weights$w_sum[i] != 1){
+    check_weights <- w_norm[, lapply(.SD, sum), by = poly_id,
+                            .SDcols = c('w_area', 'weight')]
+
+  } else{
+    check_weights <- w_norm[, w_sum := sum(w_area), by=poly_id]
+  }
+  
+  # Check that polygon weights sum to 1
+  if (weights){
+    for(i in nrow(check_weights)){
       
-      stop(crayon::red('Area weights for polygon', check_weights$poly_id, 'do not sum to 1'))
+      if(check_weights$w_area[i] != 1 | check_weights$weight[i] != 1){
+        
+        stop(crayon::red('Weights for polygon', check_weights$poly_id, 'do not sum to 1'))
+        
+      }
       
     }
+  } else {
     
+    for(i in nrow(check_weights)){
+      
+      if(check_weights$w_sum[i] != 1){
+        
+        stop(crayon::red('Area weights for polygon', check_weights$poly_id, 'do not sum to 1'))
+        
+      }
+      
+    }
   }
+  
   # If it doesn't error out then all weight sums = 1
   message(crayon::green('All weights sum to 1'))
   
   ## Save outputs 
   ## -----------------------------------------------
   
-  # Check if there is already a general geoweights folder
-  if(!dir.exists(here::here("data", "int", "geoweights"))){
+  # Check if there is already a general weights folder
+  if(!dir.exists(here::here("data", "int", "weights"))){
 
     # If no - create it
-    message(crayon::yellow('Creating data/int/geoweights/'))
-    dir.create(here::here("data", "int", "geoweights"), recursive=T)
+    message(crayon::yellow('Creating data/int/weights/'))
+    dir.create(here::here("data", "int", "weights"), recursive=T)
 
   }
   
-  # File save name
-  save_name <- paste0(paste(input_polygons_name, data_source_norm, sep="_"), ".csv")
-  save_path <- file.path(here::here(), "data", "int", "geoweights")
+  # If secondary weights are used add to save name
+  # Otherwise just include other inputs
+  if(weights){
+    save_name <- paste0(paste(input_polygons_name, data_source_norm, "area", weights_type, "weights", sep="_"), ".csv")
+  } else{
+    save_name <- paste0(paste(input_polygons_name, data_source_norm, "area", "weights", sep="_"), ".csv")
+  }
+  
+  # File save path
+  save_path <- file.path(here::here(), "data", "int", "weights")
   
   # Save message
   message(crayon::yellow('Saving', save_name, 'to', save_path))
   
-  # Save geoweights 
-  fwrite(geoweights[, ':=' (gridNumber = NULL, w_sum = NULL)], file = file.path(save_path, save_name))
-
+  # Save weights 
+  if(weights){
+    fwrite(w_norm[, ':=' (coverage_fraction = NULL)], file = file.path(save_path, save_name))
+  } else {
+    fwrite(w_norm[, ':=' (coverage_fraction = NULL, w_sum = NULL)], file = file.path(save_path, save_name))
+  }
 
   ## Done
   ## -----------------------------------------------
