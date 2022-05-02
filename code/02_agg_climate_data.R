@@ -30,27 +30,31 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   }
   setMethod('as.data.table', signature(x='Raster'), as.data.table.raster)
   
-  ## Load saved area weights 
+  ## Load saved weights 
   ## -----------------------------------------------
   
   # Normalize the data source input - remove spaces & lower case
   data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
   
-  # File name to call the area weights
-  areaweights_file <- paste0(paste(input_polygons_name, data_source_norm, sep="_"), ".csv")
+  # File name to call the weights
+  if(weights){
+    weights_file <- paste0(paste(input_polygons_name, data_source_norm, "area", weights_type, "weights", sep="_"), ".csv")
+  } else{
+    weights_file <- paste0(paste(input_polygons_name, data_source_norm, "area", "weights", sep="_"), ".csv")
+  }
   
-  # Data.table of area weights 
-  area_weights <- fread(file.path(here::here(), "data", "int", "weights", areaweights_file))
+  # Data.table of weights 
+  weights_dt <- fread(file.path(here::here(), "data", "int", "weights", weights_file))
   # Convert 0-360 to match climate raster
-  area_weights[, x := ifelse(x < 0, x + 360, x)]
+  weights_dt[, x := ifelse(x < 0, x + 360, x)]
   
   # Extent of area weights with slight buffer to make sure all cells are included 
-  min_x <- min(areaweights$x) - 0.5
-  max_x <- max(areaweights$x) + 0.5
-  min_y <- min(areaweights$y) - 0.5
-  max_y <- max(areaweights$y) + 0.5
+  min_x <- min(weights_dt$x) - 0.5
+  max_x <- max(weights_dt$x) + 0.5
+  min_y <- min(weights_dt$y) - 0.5
+  max_y <- max(weights_dt$y) + 0.5
   
-  areaweights_ext <- raster::extent(min_x, max_x, min_y, max_y)
+  weights_ext <- raster::extent(min_x, max_x, min_y, max_y)
   
   ## Load climate data 
   ## -----------------------------------------------
@@ -66,7 +70,7 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
   # Immediately crop to weights extent 
-  clim_raster <- raster::crop(raster::stack(nc_file), areaweights_ext)
+  clim_raster <- raster::crop(raster::stack(nc_file), weights_ext)
   
   # Get layer names (dates)
   all_layers <- names(clim_raster)
@@ -131,7 +135,7 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
 
   }
   
-  ## Merge area weights with climate raster 
+  ## Merge weights with climate raster 
   ## -----------------------------------------------
   
   # Set key column in the climate data table
@@ -139,29 +143,7 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   setkeyv(clim_dt, keycols)
 
   # Keyed merge on the x/y column 
-  merged_dt <- clim_dt[area_weights] #cols: x, y, date, value cols 1:k, poly_id, w_area
-  
-  ## Add secondary weights if weights = TRUE
-  ## -----------------------------------------------
-  
-  if(weights){
-    
-    # File name for secondary weights 
-    weights_file <- paste0(weights_name, '.csv')
-    
-    # Data.table of secondary weights 
-    weights_dt <- fread(file.path(here::here(), "data", "int", "rasterweights", weights_file))
-    
-    # Convert 0-360 to match area weights and climate raster
-    weights_dt[, x := ifelse(x < 0, x + 360, x)]
-    
-    # Set key column in the merged dt table
-    keycols = c("x", "y")
-    setkeyv(merged_dt, keycols)
-    
-    # Merge with secondary weights
-    merged_dt <- merged_dt[weights_dt, nomatch = 0]
-  }
+  merged_dt <- clim_dt[weights_dt] #cols: x, y, date, value cols 1:k, poly_id, w_area, weight (if weights = T)
  
   ## Multiply weights x climate value (all 1:k values); aggregate by month and polygon  
   ## -----------------------------------------------
