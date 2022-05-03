@@ -11,13 +11,13 @@ library(tigris)
 library(sf)
 
 # Step 1 output
-out_1 <- read_csv(file.path(here::here(), "data", "int", "geoweights", "ca_counties_era5.csv"))
+out_1 <- read_csv(file.path(here::here(), "data", "int", "weights", "ca_counties_era5_area_crop_weights.csv"))
 
 # Step 2 output
 out_2 <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_temp_2005_2010_polynomial_3.csv"))
 
 # Compare Step 2 output with crop weights 
-out_2_crop <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_temp_2005_2010_polynomial_3_crop_weights.csv"))
+out_2_crop <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_temp_2005_2010_polynomial_3_area_crop_weights.csv"))
   
 # CA county shapefile for checking maps
 us_counties <- tigris::counties()
@@ -28,9 +28,11 @@ ca_counties <- us_counties %>%
 
 # Check Step 1 Outputs
 
-Step 1 output is the overlap between the California counties polygons and the climate rasters. There should be 58 polygons, representing the 58 counties in the state. 
+## Area Weights
 
-```{r}
+Step 1 output is the overlap between the California counties polygons and the climate rasters. There should be 58 polygons, representing the 58 counties in the state. Area weights are the fraction of the polygon falling within each grid cell and are normalized by polygon so that all cells within a polygon sum to 1.  
+
+```{r check-area-weights}
 check_id_counts <- out_1 %>% 
   select(poly_id) %>% 
   distinct() #58 - good 
@@ -50,11 +52,11 @@ xy_ids <- out_1 %>%
   group_by(x,y) %>% 
   summarize(n_poly_ids = n())
 
-# Map weights 
-# Weight = fraction of the cell covered by the polygon * area km 2
+# Map area weights 
+# Area weight = fraction of the cell covered by the polygon * area km 2
 # Normalized by polygon so all polygons should sum to 1
-map_weights <- ggplot() + 
-  geom_raster(data = out_1, aes(x=x, y=y, fill=w_geo)) +
+map_area_weights <- ggplot() + 
+  geom_raster(data = out_1, aes(x=x, y=y, fill=w_area)) +
   geom_sf(data = ca_counties, color = 'black', fill = NA) + 
   labs(fill = 'Area Weight',
        x = '',
@@ -63,12 +65,43 @@ map_weights <- ggplot() +
   theme_bw() 
 
 # Check sum weights
-sum_weights <- out_1 %>% 
+sum_area_weights <- out_1 %>% 
   group_by(poly_id) %>% 
-  mutate(sum_w_geo = sum(w_geo)) %>% 
+  mutate(sum_w_area = sum(w_area)) %>% 
   ungroup() # All = 1
 ```
 
+```{r message=F, warning=F, echo=F}
+map_area_weights
+```
+
+## Crop Weights
+
+Crop weights are the fraction of the crops within the polygon occurring within a given grid cell. These weights are also normalized by polygon so that all cells within a polygon sum to 1. 
+
+```{r check-crop-weights}
+# Map crop weights 
+# crop weight = fraction of the cell covered by the polygon * crop weight
+# Normalized by polygon so all polygons should sum to 1
+map_crop_weights <- ggplot() + 
+  geom_raster(data = out_1, aes(x=x, y=y, fill=weight)) +
+  geom_sf(data = ca_counties, color = 'black', fill = NA) + 
+  labs(fill = 'Crop Weight',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c() + 
+  theme_bw() 
+
+# Check sum weights
+sum_crop_weights <- out_1 %>% 
+  group_by(poly_id) %>% 
+  mutate(sum_weight= sum(weight)) %>% 
+  ungroup() # All = 1
+```
+
+```{r message=F, warning=F, echo=F}
+map_crop_weights
+```
 
 # Check Step 2 Output
 
@@ -232,5 +265,14 @@ map_order1_jul_crop <- out2_crop_sf %>%
   theme_bw() 
 ```
 
+```{r message=F, warning=F, echo=F}
+map_order1_feb
+map_order1_feb_crop
+```
 
+
+```{r message=F, warning=F, echo=F}
+map_order1_jul
+map_order1_jul_crop
+```
 
