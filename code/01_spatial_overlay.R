@@ -82,7 +82,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   ## -----------------------------------------------
   
   # Calculate area weight per grid cell 
-  area_weight <- overlap[, .(x, y, poly_id, coverage_fraction, w_area = coverage_fraction * cell_area_km2)] # area weight = area km2 * coverage fraction 
+  area_weight <- overlap[, .(x, y, poly_id, w_area = coverage_fraction * cell_area_km2)] # area weight = area km2 * coverage fraction 
   
   # IF weights = TRUE, merge secondary weights with area weights
   if(weights){
@@ -100,16 +100,16 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
     # Merge with secondary weights
     w_merged <- area_weight[weights_dt, nomatch = 0]
     
-    # Weight in pixel = coverage fraction * weight
-    w_merged[, weight := weight * coverage_fraction]
+    # Weight in pixel = w_area * weight
+    w_merged[, weight := weight * w_area]
     
   }
 
   # Normalize weights by polygon
   if(weights){
     
-    w_norm <- w_merged[, w_area := w_area / sum(w_area), by = poly_id]
-    w_norm[, weight := weight / sum(weight), by = poly_id]
+    w_norm <- w_merged[, ':=' (w_area = w_area / sum(w_area), weight = weight / sum(weight)), by = poly_id]
+
     
   } else {
     w_norm <- area_weight[, w_area := w_area / sum(w_area), by = poly_id]
@@ -130,7 +130,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   if (weights){
     for(i in nrow(check_weights)){
       
-      if(check_weights$w_area[i] != 1 | check_weights$weight[i] != 1){
+      if(!dplyr::near(check_weights$w_area[i], 1, tol=0.001) | !dplyr::near(check_weights$weight[i], 1, tol=0.001)){
         
         stop(crayon::red('Weights for polygon', check_weights$poly_id, 'do not sum to 1'))
         
@@ -141,7 +141,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
     
     for(i in nrow(check_weights)){
       
-      if(check_weights$w_sum[i] != 1){
+      if(!dplyr::near(check_weights$w_sum[i], 1, tol=0.001)){
         
         stop(crayon::red('Area weights for polygon', check_weights$poly_id, 'do not sum to 1'))
         
