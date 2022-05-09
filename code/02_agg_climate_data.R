@@ -148,10 +148,10 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   ## Multiply weights x climate value (all 1:k values); aggregate by month and polygon  
   ## -----------------------------------------------
 
-  # Multiply by both area weights and secondary weights if weights = TRUE 
+  # Multiply by secondary weights if weights = TRUE (already normalized by polygon area)
   # Otherwise multiply by just area weights 
   if(weights){
-    merged_dt[, (list_names) := lapply(list_names, function(x) {get(x) * w_area * weight})]
+    merged_dt[, (list_names) := lapply(list_names, function(x) {get(x) * weight})]
   } else {
     merged_dt[, (list_names) := lapply(list_names, function(x) {get(x) * w_area})]
   }
