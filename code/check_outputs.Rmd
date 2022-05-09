@@ -18,7 +18,11 @@ out_2 <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_te
 
 # Compare Step 2 output with crop weights 
 out_2_crop <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_temp_2005_2010_polynomial_3_area_crop_weights.csv"))
-  
+
+# Untransformed monthly aggregated era5 data 
+era5_daily <- read_csv(file.path(here::here(), "data", "output",
+                                   "ca_counties_test_2010.csv"))
+
 # CA county shapefile for checking maps
 us_counties <- tigris::counties()
 ca_counties <- us_counties %>% 
@@ -210,7 +214,7 @@ map_order1_feb <- out2_sf %>%
        title = 'area weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c() + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
   facet_wrap(~year) + 
   theme_bw() 
 
@@ -223,7 +227,7 @@ map_order1_jul <- out2_sf %>%
        title = 'area weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c() + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
   facet_wrap(~year) + 
   theme_bw() 
 
@@ -247,7 +251,7 @@ map_order1_feb_crop <- out2_crop_sf %>%
        title = 'area + crop weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c() + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
   facet_wrap(~year) + 
   theme_bw() 
 
@@ -260,7 +264,7 @@ map_order1_jul_crop <- out2_crop_sf %>%
        title = 'area + crop weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c() + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
   facet_wrap(~year) + 
   theme_bw() 
 ```
@@ -274,5 +278,55 @@ map_order1_feb_crop
 ```{r message=F, warning=F, echo=F}
 map_order1_jul
 map_order1_jul_crop
+```
+
+## Compare to Raw Data
+
+Compare the above Feb & July maps to the raw era5 data aggregated to the monthly scale for 2010. These data haven't gone through any of the non-linear transformations. 
+
+```{r}
+# Back to -180 to 180
+# Add days in the month 
+era5_daily <- era5_daily %>% 
+  mutate(x = ifelse(x>180, x-360, x),
+         days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
+                                   month == 'month_02' ~ 28, 
+                                   TRUE ~ 31))
+
+era5_monthly_by_grid <- era5_daily %>% 
+  group_by(x, y, poly_id, month, days_in_month) %>% 
+  summarize(sum_temp = sum(value)) %>% 
+  mutate(avg_temp = sum_temp / days_in_month)
+
+## Maps for untransformed era5 data 
+# February 
+era5_feb <- era5_monthly_by_grid %>% 
+  filter(month == 'month_02')
+
+map_era5_feb <- ggplot() + 
+  geom_raster(data = era5_feb,
+              aes(x=x, y=y, fill = avg_temp)) + 
+  geom_sf(data = ca_counties, fill=NA, color='black') + 
+  labs(fill = 'Avg Feb\nTemperature\n(Raw ERA5)',
+       title = 'Montly ERA5 (2010)',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
+  theme_bw() 
+
+# July 
+era5_jul <- era5_monthly_by_grid %>% 
+  filter(month == 'month_07')
+
+map_era5_jul <- ggplot() + 
+  geom_raster(data = era5_jul,
+              aes(x=x, y=y, fill = avg_temp)) + 
+  geom_sf(data = ca_counties, fill=NA, color='black') + 
+  labs(fill = 'Avg July\nTemperature\n(Raw ERA5)',
+       title = 'Montly ERA5 (2010)',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
+  theme_bw() 
 ```
 
