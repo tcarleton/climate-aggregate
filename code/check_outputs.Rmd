@@ -424,7 +424,7 @@ map_era5_p_jul <- ggplot() +
   geom_raster(data = era5_prcp_jul,
               aes(x=x, y=y, fill = avg_prcp)) + 
   geom_sf(data = ca_counties, fill=NA, color='black') + 
-  labs(fill = 'Avg July\nPrecipitation\n(Raw ERA5)',
+  labs(fill = 'Avg July\nPrecipitation (meters)',
        title = 'Montly ERA5 (2010)',
        x = '',
        y = '') + 
@@ -440,7 +440,7 @@ map_era5_p_dec <- ggplot() +
   geom_raster(data = era5_prcp_dec,
               aes(x=x, y=y, fill = avg_prcp)) + 
   geom_sf(data = ca_counties, fill=NA, color='black') + 
-  labs(fill = 'Avg Dec\nPrecipitation\n(Raw ERA5)',
+  labs(fill = 'Avg Dec\nPrecipitation (meters)',
        title = 'Montly ERA5 (2010)',
        x = '',
        y = '') + 
