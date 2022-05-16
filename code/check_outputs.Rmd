@@ -20,8 +20,15 @@ out_2 <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_te
 out_2_crop <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_temp_2005_2010_polynomial_3_area_crop_weights.csv"))
 
 # Untransformed monthly aggregated era5 data 
-era5_daily <- read_csv(file.path(here::here(), "data", "output",
-                                   "ca_counties_test_2010.csv"))
+era5_temp_daily <- read_csv(file.path(here::here(), "data", "output",
+                                   "ca_counties_test_temp_2010.csv"))
+
+# Step 2 output precip 
+out_2_prcp <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_prcp_2005_2010_polynomial_3_area_crop_weights.csv"))
+
+# Untransformed monthly era5 precip
+era5_prcp_daily <- read_csv(file.path(here::here(), "data", "output",
+                                   "ca_counties_test_prcp_2010.csv"))
 
 # CA county shapefile for checking maps
 us_counties <- tigris::counties()
@@ -108,6 +115,8 @@ map_crop_weights
 ```
 
 # Check Step 2 Output
+
+## Temperature 
 
 ```{r}
 # Check that each polygon has a value for all 12 months 
@@ -280,31 +289,89 @@ map_order1_jul
 map_order1_jul_crop
 ```
 
-## Compare to Raw Data
+## Precipitation
+
+```{r}
+# Check that each polygon has a value for all 12 months 
+check_out2 <- out_2_prcp %>% 
+  group_by(year, poly_id) %>% 
+  summarize(n_months = n()) # Looks good 
+
+
+# Convert the first order to avg prcp by month so it's easier to understand the values 
+# use value / days in month 
+out_2_prcp <- out_2_prcp %>% 
+  mutate(days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
+                                   month == 'month_02' & year == 2008 ~ 29,
+                                   month == 'month_02' & year != 2008 ~ 28, 
+                                   TRUE ~ 31)) %>% 
+  mutate(order_1_avg = order_1 / days_in_month)
+
+## Maps 
+# Join first order outputs to the shp 
+ca_counties <- ca_counties %>% 
+  mutate(poly_id = as.numeric(GEOID)) %>% 
+  select(poly_id)
+
+out2_prcp_sf <- merge(ca_counties, out_2_prcp, all = TRUE)
+
+# Map first order values by county for lowest precip month (July) 
+map_prcp_jul <- out2_prcp_sf %>% 
+  filter(month == 'month_07') %>% 
+  ggplot() + 
+  geom_sf(aes(fill = order_1_avg)) + 
+  labs(fill = 'Avg July\nPrecipitation\n(1st Order)',
+       title = 'area + crop weights',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(option = 'mako', direction = -1,
+                       limits = c(0, 0.00009)) + 
+  facet_wrap(~year) + 
+  theme_bw() 
+
+# Map first order values for highest precip month (December)
+map_prcp_dec <- out2_prcp_sf %>% 
+  filter(month == 'month_12') %>% 
+  ggplot() + 
+  geom_sf(aes(fill = order_1_avg)) + 
+  labs(fill = 'Avg Dec\nPrecipitation\n(1st Order)',
+       title = 'area + crop weights',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(option = 'mako', direction = -1,
+                       limits = c(0, 0.0009)) + 
+  facet_wrap(~year) + 
+  theme_bw() 
+```
+
+
+# Compare to Raw Data
+
+## Temperature 
 
 Compare the above Feb & July maps to the raw era5 data aggregated to the monthly scale for 2010. These data haven't gone through any of the non-linear transformations. 
 
 ```{r}
 # Back to -180 to 180
 # Add days in the month 
-era5_daily <- era5_daily %>% 
+era5_temp_daily <- era5_temp_daily %>% 
   mutate(x = ifelse(x>180, x-360, x),
          days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
                                    month == 'month_02' ~ 28, 
                                    TRUE ~ 31))
 
-era5_monthly_by_grid <- era5_daily %>% 
+era5_t_monthly_by_grid <- era5_temp_daily %>% 
   group_by(x, y, poly_id, month, days_in_month) %>% 
   summarize(sum_temp = sum(value)) %>% 
   mutate(avg_temp = sum_temp / days_in_month)
 
 ## Maps for untransformed era5 data 
 # February 
-era5_feb <- era5_monthly_by_grid %>% 
+era5_temp_feb <- era5_t_monthly_by_grid %>% 
   filter(month == 'month_02')
 
-map_era5_feb <- ggplot() + 
-  geom_raster(data = era5_feb,
+map_era5_t_feb <- ggplot() + 
+  geom_raster(data = era5_temp_feb,
               aes(x=x, y=y, fill = avg_temp)) + 
   geom_sf(data = ca_counties, fill=NA, color='black') + 
   labs(fill = 'Avg Feb\nTemperature\n(Raw ERA5)',
@@ -315,11 +382,11 @@ map_era5_feb <- ggplot() +
   theme_bw() 
 
 # July 
-era5_jul <- era5_monthly_by_grid %>% 
+era5_temp_jul <- era5_monthly_by_grid %>% 
   filter(month == 'month_07')
 
-map_era5_jul <- ggplot() + 
-  geom_raster(data = era5_jul,
+map_era5_t_jul <- ggplot() + 
+  geom_raster(data = era5_temp_jul,
               aes(x=x, y=y, fill = avg_temp)) + 
   geom_sf(data = ca_counties, fill=NA, color='black') + 
   labs(fill = 'Avg July\nTemperature\n(Raw ERA5)',
@@ -330,3 +397,54 @@ map_era5_jul <- ggplot() +
   theme_bw() 
 ```
 
+## Precipitation 
+
+Compare the above July & December maps to the raw era5 data aggregated to the monthly scale for 2010. These data haven't gone through any of the non-linear transformations. 
+
+```{r}
+# Back to -180 to 180
+# Add days in the month 
+era5_prcp_daily <- era5_prcp_daily %>% 
+  mutate(x = ifelse(x>180, x-360, x),
+         days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
+                                   month == 'month_02' ~ 28, 
+                                   TRUE ~ 31))
+
+era5_p_monthly_by_grid <- era5_prcp_daily %>% 
+  group_by(x, y, poly_id, month, days_in_month) %>% 
+  summarize(sum_prcp = sum(value)) %>% 
+  mutate(avg_prcp = sum_prcp / days_in_month)
+
+## Maps for untransformed era5 data 
+# July
+era5_prcp_jul <- era5_p_monthly_by_grid %>% 
+  filter(month == 'month_07')
+
+map_era5_p_jul <- ggplot() + 
+  geom_raster(data = era5_prcp_jul,
+              aes(x=x, y=y, fill = avg_prcp)) + 
+  geom_sf(data = ca_counties, fill=NA, color='black') + 
+  labs(fill = 'Avg July\nPrecipitation\n(Raw ERA5)',
+       title = 'Montly ERA5 (2010)',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(option = 'mako', direction = -1,
+                       limits = c(0, 0.00009)) + 
+  theme_bw() 
+
+# December 
+era5_prcp_dec <- era5_p_monthly_by_grid %>% 
+  filter(month == 'month_12')
+
+map_era5_p_dec <- ggplot() + 
+  geom_raster(data = era5_prcp_dec,
+              aes(x=x, y=y, fill = avg_prcp)) + 
+  geom_sf(data = ca_counties, fill=NA, color='black') + 
+  labs(fill = 'Avg Dec\nPrecipitation\n(Raw ERA5)',
+       title = 'Montly ERA5 (2010)',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(option = 'mako', direction = -1,
+                       limits = c(0, 0.0009)) + 
+  theme_bw() 
+```
