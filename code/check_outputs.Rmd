@@ -405,15 +405,11 @@ Compare the above July & December maps to the raw era5 data aggregated to the mo
 # Back to -180 to 180
 # Add days in the month 
 era5_prcp_daily <- era5_prcp_daily %>% 
-  mutate(x = ifelse(x>180, x-360, x),
-         days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
-                                   month == 'month_02' ~ 28, 
-                                   TRUE ~ 31))
+  mutate(x = ifelse(x>180, x-360, x))
 
 era5_p_monthly_by_grid <- era5_prcp_daily %>% 
-  group_by(x, y, poly_id, month, days_in_month) %>% 
-  summarize(sum_prcp = sum(value)) %>% 
-  mutate(avg_prcp = sum_prcp / days_in_month)
+  group_by(x, y, poly_id, month) %>% 
+  summarize(sum_prcp = sum(value)) 
 
 ## Maps for untransformed era5 data 
 # July
@@ -422,14 +418,14 @@ era5_prcp_jul <- era5_p_monthly_by_grid %>%
 
 map_era5_p_jul <- ggplot() + 
   geom_raster(data = era5_prcp_jul,
-              aes(x=x, y=y, fill = avg_prcp)) + 
+              aes(x=x, y=y, fill = sum_prcp)) + 
   geom_sf(data = ca_counties, fill=NA, color='black') + 
-  labs(fill = 'Avg July\nPrecipitation (meters)',
+  labs(fill = 'Total July\nPrecipitation (meters)',
        title = 'Montly ERA5 (2010)',
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(0, 0.00009)) + 
+                       limits = c(0, 0.07)) + 
   theme_bw() 
 
 # December 
@@ -438,13 +434,13 @@ era5_prcp_dec <- era5_p_monthly_by_grid %>%
 
 map_era5_p_dec <- ggplot() + 
   geom_raster(data = era5_prcp_dec,
-              aes(x=x, y=y, fill = avg_prcp)) + 
+              aes(x=x, y=y, fill = sum_prcp)) + 
   geom_sf(data = ca_counties, fill=NA, color='black') + 
-  labs(fill = 'Avg Dec\nPrecipitation (meters)',
+  labs(fill = 'Total Dec\nPrecipitation (meters)',
        title = 'Montly ERA5 (2010)',
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(0, 0.0009)) + 
+                       limits = c(0, 0.6)) + 
   theme_bw() 
 ```
