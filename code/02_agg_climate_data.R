@@ -2,7 +2,7 @@
 ## February 22, 2022
 ## Aggregate Climate Data: Pipeline Step 02
 
-agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial', trans_specs, weights) {
+agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 'polynomial', trans_specs, weights) {
   
   ## Setup 
   ## -----------------------------------------------
@@ -80,9 +80,26 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   ## Aggregate to grid-day level  
   ## -----------------------------------------------
   
-  # Average over each set of 24 layers - assuming there are 24*365 layers  
-  indices<-rep(1:(nlayers(clim_raster)/24),each=24)
-  clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=mean) #Stack of 365 layers
+  if(!daily_agg %in% c('average', 'sum')){
+    
+    stop(crayon::red("Daily aggregation must be 'average' or 'sum'"))
+  }
+  
+  ## Average 
+  if(daily_agg == 'average'){
+    
+    # Average over each set of 24 layers - assuming there are 24*365 layers 
+    indices<-rep(1:(nlayers(clim_raster)/24),each=24)
+    clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=mean) #Stack of 365 layers
+  }
+
+  ## Sum 
+  if(daily_agg == 'sum'){
+    
+    # Sum over each set of 24 layers - assuming there are 24*365 layers
+    indices<-rep(1:(nlayers(clim_raster)/24),each=24)
+    clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=sum) #Stack of 365 layers
+  }
   
   # For temperature convert values in Kelvin to Celsius C = K - 273.15
   if(climate_var == 'temp'){
@@ -178,14 +195,14 @@ agg_climate_data <- function(year, data_source, climate_var, trans = 'polynomial
   }
 
 # function to call agg_climate_data over multiple years in parallel
-agg_climate_data_multiyear <- function(years, data_source, climate_var, trans = 'polynomial', trans_specs, weights){
+agg_climate_data_multiyear <- function(years, data_source, climate_var, daily_agg, trans = 'polynomial', trans_specs, weights){
   
   library(parallel)
   library(data.table)
   
   no_cores <- parallel::detectCores() - 1 # Calculate the number of cores. Leave one in case something else needs to be done on the same computer at the same time. 
   cl <- makeCluster(no_cores, type="FORK") # Initiate cluster. "FORK" means bring everything in your current environment with you. 
-  sum_by_poly_multiyear <- parLapply(cl, years, agg_climate_data, data_source, climate_var, trans, trans_specs, weights)
+  sum_by_poly_multiyear <- parLapply(cl, years, agg_climate_data, data_source, climate_var, daily_agg, trans, trans_specs, weights)
   stopCluster(cl)
   
   sum_by_poly_multiyear <- data.table::rbindlist(sum_by_poly_multiyear)
@@ -205,10 +222,10 @@ agg_climate_data_multiyear <- function(years, data_source, climate_var, trans = 
   # If secondary weights are used add to save name
   # Otherwise just include other inputs
   if(weights){
-    save_name <- paste0(paste(input_polygons_name, data_source_norm, climate_var,
+    save_name <- paste0(paste(input_polygons_name, data_source_norm, climate_var, daily_agg,
                             years[1], years[length(years)], trans, trans_specs, "area", weights_type, 'weights', sep="_"), ".csv")
   } else{
-    save_name <- paste0(paste(input_polygons_name, data_source_norm, climate_var,
+    save_name <- paste0(paste(input_polygons_name, data_source_norm, climate_var, daily_agg,
                             years[1], years[length(years)], trans, trans_specs, "area", "weights", sep="_"), ".csv")
   }
   

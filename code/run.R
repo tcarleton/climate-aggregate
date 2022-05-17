@@ -17,6 +17,7 @@ input_polygons <- read_sf(file.path(here::here(), "data", "shapefiles", "tl_2019
 # Defined - must match one of the options
 climate_data <- 'era5' # era5 is only option for now
 climate_variable <- 'prcp' # temp, prcp, or uv
+daily_agg <- 'sum' # average or sum; method for aggregating from hourly to daily 
 years <- 2005:2010 # any sequence of years 2002:2020
 trans <- 'polynomial' # polynomial is only option for now
 trans_specs <- 3 # Specs must match the trans type, numeric when trans=polynomial
@@ -48,6 +49,7 @@ if(both_steps){
 agg_climate_data_multiyear(years = years,
                            data_source = climate_data,
                            climate_var = climate_variable,
+                           daily_agg = daily_agg, 
                            trans = trans,
                            trans_specs = trans_specs,
                            weights = weights)
