@@ -24,7 +24,7 @@ era5_temp_daily <- read_csv(file.path(here::here(), "data", "output",
                                    "ca_counties_test_temp_2010.csv"))
 
 # Step 2 output precip 
-out_2_prcp <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_prcp_2005_2010_polynomial_3_area_crop_weights.csv"))
+out_2_prcp <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_prcp_sum_2005_2010_polynomial_3_area_crop_weights.csv"))
 
 # Untransformed monthly era5 precip
 era5_prcp_daily <- read_csv(file.path(here::here(), "data", "output",
@@ -298,15 +298,6 @@ check_out2 <- out_2_prcp %>%
   summarize(n_months = n()) # Looks good 
 
 
-# Convert the first order to avg prcp by month so it's easier to understand the values 
-# use value / days in month 
-out_2_prcp <- out_2_prcp %>% 
-  mutate(days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
-                                   month == 'month_02' & year == 2008 ~ 29,
-                                   month == 'month_02' & year != 2008 ~ 28, 
-                                   TRUE ~ 31)) %>% 
-  mutate(order_1_avg = order_1 / days_in_month)
-
 ## Maps 
 # Join first order outputs to the shp 
 ca_counties <- ca_counties %>% 
@@ -319,13 +310,13 @@ out2_prcp_sf <- merge(ca_counties, out_2_prcp, all = TRUE)
 map_prcp_jul <- out2_prcp_sf %>% 
   filter(month == 'month_07') %>% 
   ggplot() + 
-  geom_sf(aes(fill = order_1_avg)) + 
-  labs(fill = 'Avg July\nPrecipitation\n(1st Order)',
+  geom_sf(aes(fill = order_1)) + 
+  labs(fill = 'Total July\nPrecipitation\n(1st Order)',
        title = 'area + crop weights',
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(0, 0.00009)) + 
+                       limits = c(0, 0.07)) + 
   facet_wrap(~year) + 
   theme_bw() 
 
@@ -333,13 +324,13 @@ map_prcp_jul <- out2_prcp_sf %>%
 map_prcp_dec <- out2_prcp_sf %>% 
   filter(month == 'month_12') %>% 
   ggplot() + 
-  geom_sf(aes(fill = order_1_avg)) + 
-  labs(fill = 'Avg Dec\nPrecipitation\n(1st Order)',
+  geom_sf(aes(fill = order_1)) + 
+  labs(fill = 'Total Dec\nPrecipitation\n(1st Order)',
        title = 'area + crop weights',
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(0, 0.0009)) + 
+                       limits = c(0, 0.61)) + 
   facet_wrap(~year) + 
   theme_bw() 
 ```
@@ -441,6 +432,6 @@ map_era5_p_dec <- ggplot() +
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(0, 0.6)) + 
+                       limits = c(0, 0.61)) + 
   theme_bw() 
 ```
