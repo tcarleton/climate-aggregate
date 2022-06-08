@@ -5,8 +5,9 @@
 import requests
 import os
 
-# data_folder = '/home/tcarleton/climate-aggregate/data'
-data_folder = '../data'
+root = '/home/tcarleton/climate-aggregate/'
+data_folder = root + 'data'
+# data_folder = '../data' # if running locally
 
 def download_potapov(year, quadrant):
     
