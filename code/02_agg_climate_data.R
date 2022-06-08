@@ -86,31 +86,31 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
   ## Average 
   if(daily_agg == 'average'){
     
-    # Check if there are 24*365 layers  
-    # Layer names in raster correspond to the dates; should be 24*365 layer names
-    if(raster::nlayers(clim_raster) != 8760){
+    # Check if there are 24*365 or 24*366 layers
+    if(raster::nlayers(clim_raster) != 8760 | raster::nlayers(clim_raster) != 8784){
       
       stop(crayon::red("Incomplete year of data; raster has", length(all_layers),
-                       "layers, but a complete year should have 8760 layers"))
+                       "layers, but a complete year should have 8760 layers or 8784 layers on a leap year"))
     }
     
-    # Average over each set of 24 layers - assuming there are 24*365 layers 
+    # Average over each set of 24 layers 
     indices<-rep(1:(nlayers(clim_raster)/24),each=24)
-    clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=mean) #Stack of 365 layers
+    clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=mean) #Stack of 365/366 layers
   }
 
   ## Sum 
   if(daily_agg == 'sum'){
     
-    if(raster::nlayers(clim_raster) != 8760){
+    # Check if there are 24*365 or 24*366 layers
+    if(raster::nlayers(clim_raster) != 8760 | raster::nlayers(clim_raster) != 8784){
       
       stop(crayon::red("Incomplete year of data; raster has", length(all_layers),
-                       "layers, but a complete year should have 8760 layers"))
+                       "layers, but a complete year should have 8760 layers or 8784 layers on a leap year"))
     }
     
-    # Sum over each set of 24 layers - assuming there are 24*365 layers
+    # Sum over each set of 24 layers 
     indices<-rep(1:(nlayers(clim_raster)/24),each=24)
-    clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=sum) #Stack of 365 layers
+    clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=sum) #Stack of 365/366 layers
   }
   
   # For temperature convert values in Kelvin to Celsius C = K - 273.15
