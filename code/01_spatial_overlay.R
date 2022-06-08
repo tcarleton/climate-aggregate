@@ -54,14 +54,15 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   rast_xmin <- extent(clim_area_raster)@xmin
   rast_xmax <- extent(clim_area_raster)@xmax
   
-  # Rotate raster if initial longitudes don't align 
+  # Shift polygons if initial longitudes don't align 
   if(!dplyr::near(poly_xmax, rast_xmax, tol=1.01)) {
 
-    message(crayon::yellow('Adjusting raster longitude from',
-                            round(rast_xmin,0), '-', round(rast_xmax,0),
-                           'to', round(poly_xmin,0), '-', round(poly_xmax,0)))
+    message(crayon::yellow('Adjusting polygon longitude from',
+                            round(poly_xmin,0), '-', round(poly_xmax,0),
+                           'to', round(rast_xmin,0), '-', round(rast_xmax,0)))
 
-    clim_area_raster <- raster::rotate(clim_area_raster)
+    input_polygons <- input_polygons %>% 
+      st_shift_longitude()
 
   }
   
@@ -92,6 +93,21 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
     
     # Data.table of secondary weights 
     weights_dt <- fread(file.path(here::here(), "data", "int", "rasterweights", weights_file))
+    
+    # Min/Max of secondary weights
+    weights_xmin <- min(weights_dt$x)
+    weights_xmax <- max(weights_dt$x)
+    
+    # If weights don't match raster convert them 
+    if(!dplyr::near(weights_xmax, rast_xmax, tol=1.01)) {
+      
+      message(crayon::yellow('Adjusting secondary weights longitude from',
+                             round(weights_xmin,0), '-', round(weights_xmax,0),
+                             'to', round(rast_xmin,0), '-', round(rast_xmax,0)))
+      
+      weights_dt[, x := ifelse(x < 0, x + 360, x)]
+      
+    }
     
     # Set key column in the merged dt table
     keycols = c("x", "y")
@@ -181,9 +197,9 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   
   # Save weights 
   if(weights){
-    fwrite(w_norm[, ':=' (coverage_fraction = NULL)], file = file.path(save_path, save_name))
+    fwrite(w_norm, file = file.path(save_path, save_name))
   } else {
-    fwrite(w_norm[, ':=' (coverage_fraction = NULL, w_sum = NULL)], file = file.path(save_path, save_name))
+    fwrite(w_norm, file = file.path(save_path, save_name))
   }
 
   ## Done
