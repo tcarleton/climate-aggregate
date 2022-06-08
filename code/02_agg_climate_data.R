@@ -87,7 +87,7 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
   if(daily_agg == 'average'){
     
     # Check if there are 24*365 or 24*366 layers
-    if(raster::nlayers(clim_raster) != 8760 | raster::nlayers(clim_raster) != 8784){
+    if(!raster::nlayers(clim_raster) %in% c(8760, 8784)){
       
       stop(crayon::red("Incomplete year of data; raster has", length(all_layers),
                        "layers, but a complete year should have 8760 layers or 8784 layers on a leap year"))
@@ -102,7 +102,7 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
   if(daily_agg == 'sum'){
     
     # Check if there are 24*365 or 24*366 layers
-    if(raster::nlayers(clim_raster) != 8760 | raster::nlayers(clim_raster) != 8784){
+    if(!raster::nlayers(clim_raster) %in% c(8760, 8784)){
       
       stop(crayon::red("Incomplete year of data; raster has", length(all_layers),
                        "layers, but a complete year should have 8760 layers or 8784 layers on a leap year"))
