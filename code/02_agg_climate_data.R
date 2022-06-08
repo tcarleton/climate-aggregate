@@ -45,8 +45,6 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
   
   # Data.table of weights 
   weights_dt <- fread(file.path(here::here(), "data", "int", "weights", weights_file))
-  # Convert 0-360 to match climate raster
-  weights_dt[, x := ifelse(x < 0, x + 360, x)]
   
   # Extent of area weights with slight buffer to make sure all cells are included 
   min_x <- min(weights_dt$x) - 0.5
@@ -88,6 +86,14 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
   ## Average 
   if(daily_agg == 'average'){
     
+    # Check if there are 24*365 layers  
+    # Layer names in raster correspond to the dates; should be 24*365 layer names
+    if(raster::nlayers(clim_raster) != 8760){
+      
+      stop(crayon::red("Incomplete year of data; raster has", length(all_layers),
+                       "layers, but a complete year should have 8760 layers"))
+    }
+    
     # Average over each set of 24 layers - assuming there are 24*365 layers 
     indices<-rep(1:(nlayers(clim_raster)/24),each=24)
     clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=mean) #Stack of 365 layers
@@ -95,6 +101,12 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
 
   ## Sum 
   if(daily_agg == 'sum'){
+    
+    if(raster::nlayers(clim_raster) != 8760){
+      
+      stop(crayon::red("Incomplete year of data; raster has", length(all_layers),
+                       "layers, but a complete year should have 8760 layers"))
+    }
     
     # Sum over each set of 24 layers - assuming there are 24*365 layers
     indices<-rep(1:(nlayers(clim_raster)/24),each=24)
