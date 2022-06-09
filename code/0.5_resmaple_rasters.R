@@ -11,8 +11,8 @@
 #' 
 #' @return a data.table of geoweights (area weighted raster/polygon overlap)
 
-# data_folder = here::here("data")
-data_folder = '/home/tcarleton/Climate/data'
+source(here::here('code', 'file_paths.R')) # define the root directory for where data is stored
+data_folder = file.path(root_dir, 'data')
 
 calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "full"){
   

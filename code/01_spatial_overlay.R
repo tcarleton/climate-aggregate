@@ -11,6 +11,7 @@
 #' 
 #' @return a data.table of geoweights (area weighted raster/polygon overlap)
 
+source(here::here('code', 'file_paths.R')) # define the root directory for where data is stored
 
 calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, weights){
   
@@ -31,7 +32,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   }
   
   # Call the demo data (small example raster)
-  ncpath  <- file.path(here::here(), 'data', 'demo')
+  ncpath  <- file.path(file.path(root_dir, "data", "int", "weights"), 'data', 'demo')
   ncname  <- paste(data_source_norm, 'demo', sep="_")
   nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
@@ -92,7 +93,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
     weights_file <- paste0(weights_name, '.csv')
     
     # Data.table of secondary weights 
-    weights_dt <- fread(file.path(here::here(), "data", "int", "rasterweights", weights_file))
+    weights_dt <- fread(file.path(root_dir, "data", "int", "rasterweights", weights_file))
     
     # Min/Max of secondary weights
     weights_xmin <- min(weights_dt$x)
@@ -173,11 +174,11 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   ## -----------------------------------------------
   
   # Check if there is already a general weights folder
-  if(!dir.exists(here::here("data", "int", "weights"))){
+  if(!dir.exists(file.path(root_dir, "data", "int", "weights"))){
 
     # If no - create it
     message(crayon::yellow('Creating data/int/weights/'))
-    dir.create(here::here("data", "int", "weights"), recursive=T)
+    dir.create(file.path(root_dir, "data", "int", "weights"), recursive=T)
 
   }
   
@@ -190,7 +191,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   }
   
   # File save path
-  save_path <- file.path(here::here(), "data", "int", "weights")
+  save_path <- file.path(root_dir, "data", "int", "weights")
   
   # Save message
   message(crayon::yellow('Saving', save_name, 'to', save_path))

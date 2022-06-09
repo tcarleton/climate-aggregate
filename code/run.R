@@ -6,12 +6,13 @@ library(sf)
 library(here)
 
 ## Load functions
+source(here::here('code', 'file_paths.R')) # define the root directory for where data is stored
 source(here::here('code', '01_spatial_overlay.R'))
 source(here::here('code', '02_agg_climate_data.R'))
 
 ## Load other required data (i.e. input polygons)
 # Testing with CA counties
-input_polygons <- read_sf(file.path(here::here(), "data", "shapefiles", "tl_2019_us_county", "tl_2019_us_county.shp")) %>% dplyr::filter(STATEFP == '06')
+input_polygons <- read_sf(file.path(root_dir, "data", "shapefiles", "tl_2019_us_county", "tl_2019_us_county.shp")) %>% dplyr::filter(STATEFP == '06')
 
 ## Inputs - update as necessary 
 # Defined - must match one of the options
