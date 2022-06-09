@@ -35,5 +35,8 @@ data/*
 */.ipynb_checkpoints/*
 */.DS_Store
 
-# .sh files for running slurm on the cluster
+# .sh files and slurs outputs for running slurm on the cluster
 *.sh
+*.Rout
+*.err
+*.out
