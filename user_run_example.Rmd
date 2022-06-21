@@ -1,0 +1,20 @@
+---
+title: "User Run Example"
+author: "Tyler Liddell"
+date: '2022-06-21'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The goal of this file is to imitate how a user will eventually want to implement the package. In this way it is similar to the run.R file except that rather than being used to try out the current functionality, it acts as a road map. If this script is able to run, our package is ready for use. 
+
+Load package (pkg stands in for the package name once it's detirmined. See [R Packages: Name Your Package](https://r-pkgs.org/workflows101.html#naming) for suggestions.
+
+```{r}
+# User will run install.packages("pkg")
+library()
+```
+
