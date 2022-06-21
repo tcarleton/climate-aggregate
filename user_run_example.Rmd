@@ -21,17 +21,41 @@ library(pkg)
 Read in data
 ```{r}
 # Weights raster
-#weights_raster <- raster to resample
+weights_raster <- read.csv(crop_yield_data)
+
 ```
+
+List parameters to use in function arguments
+```{r}
+climate_data <- 'era5' # era5 is only option for now
+climate_variable <- 'prcp' # temp, prcp, or uv
+daily_agg <- 'sum' # average or sum; method for aggregating from hourly to daily 
+years <- 2005:2010 # any sequence of years 2002:2020
+trans <- 'polynomial' # polynomial is only option for now
+trans_specs <- 3 # Specs must match the trans type, numeric when trans=polynomial
+id_var <- 'GEOID' # Col name in the input_polygons shp that uniquely identifies each polygon 
+weights <- TRUE # True to define a second set of weights, FALSE to use only area weights
+extent <- 'full'
+input_polygons_name <- 'ca_counties' # Name used in saving function outputs; should relate to the polygons used
+weights_type <- 'crop' # Added to the name of the output file to indicate what secondary weights are used =
+```
+
 
 Run functions
 ```{r}
-# Calc weights
-#calc_raster_weights(
-  #weights_raster = weights_raster
-  #data_source = "era5"
-  #extent = "full"
-#)
+# Resample weights raster
+calc_raster_weights(weights_raster = weights_raster,
+                    data_source = climate_data,
+                    extent = extent)
+
+# Calculate weighted statistics
+calc_geoweights(data_source = climate_data,
+                input_polygons = input_polygons,
+                polygon_id = id_var,
+                weights = weights
+                #weights_type should also be an argument option
+                )
+
 
 ```
 
