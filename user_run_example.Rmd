@@ -56,6 +56,8 @@ calc_geoweights(data_source = climate_data,
                 #weights_type should also be an argument option
                 )
 
-
+# If we were willing to make a function calc_many_weights() that would be used instead of setting weights = true, we could have something like this
+calc_raster_weights(...) %>% calc_many_weights(...)
+# Where the resampled weights raster is the first argument in calc_many_weights() and so can be piped in
 ```
 
