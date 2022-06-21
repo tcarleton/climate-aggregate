@@ -9,12 +9,29 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-The goal of this file is to imitate how a user will eventually want to implement the package. In this way it is similar to the run.R file except that rather than being used to try out the current functionality, it acts as a road map. If this script is able to run, our package is ready for use. 
+The goal of this file is to imitate how a user will eventually want to implement the package. In this way it is similar to the run.R file except that rather than being used to try out the current functionality, it acts as a road map. If this script is able to run, the package is ready for use. 
 
-Load package (pkg stands in for the package name once it's detirmined. See [R Packages: Name Your Package](https://r-pkgs.org/workflows101.html#naming) for suggestions.
-
+Load package (pkg stands in for the package name once it's determined. See [R Packages: Name Your Package](https://r-pkgs.org/workflows101.html#naming) for suggestions and conventions.
 ```{r}
-# User will run install.packages("pkg")
-library()
+# User will run install.packages("pkg"). If dependencies are properly noted in the DESCRIPTION file under Imports:, this should also install them. Note that this logic does not apply to the next line, library(pkg) only attaches pkg. Best practice is to always call functions from dependencies using package::function() syntax. There are, however, ways around this
+
+library(pkg)
+```
+
+Read in data
+```{r}
+# Weights raster
+#weights_raster <- raster to resample
+```
+
+Run functions
+```{r}
+# Calc weights
+#calc_raster_weights(
+  #weights_raster = weights_raster
+  #data_source = "era5"
+  #extent = "full"
+#)
+
 ```
 
