@@ -18,13 +18,12 @@ calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "
   
   ## Setup 
   ## -----------------------------------------------
-  require(pacman)
-  pacman::p_load(ncdf4, data.table, raster, exactextractr, tidyverse, sf, here, crayon, dplyr)
+  # Removed load packages lines which will be installed by the imports section in description and called using the pkg::fun() syntax. See bottom of user_run_example for full list of packages to be included in imports. 
   
   ## If an extent was included, crop it to the extent to save ram
   ## -----------------------------------------------
   if (!is.character(extent)){
-    weights_raster <- crop(weights_raster, extent)
+    weights_raster <- raster::crop(weights_raster, extent)
   }
   
   ## Pull a demo climate data raster based on the input data source
@@ -38,13 +37,13 @@ calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "
     stop(crayon::red('Unsupported climate data source. Supported formats are: era5'))
   }
   
-  # Call the demo data (small example raster)
+  # Call the demo data (small example raster) ---> need to figure out a way to do this with data stored in package
   ncpath  <- file.path(data_folder, 'demo')
   ncname  <- paste(data_source_norm, 'demo', sep="_")
   nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
   # Create ERA raster
-  clim_raster <- raster(nc_file) # only reads the first band
+  clim_raster <- raster::raster(nc_file) # only reads the first band
   
   ## Raster alignment: make sure clim_raster is -180 to 180 longitude
   ## -----------------------------------------------
@@ -53,8 +52,8 @@ calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "
   
   poly_xmin <- -180
   poly_xmax <- 180
-  rast_xmin <- extent(clim_raster)@xmin
-  rast_xmax <- extent(clim_raster)@xmax
+  rast_xmin <- raster::extent(clim_raster)@xmin
+  rast_xmax <- raster::extent(clim_raster)@xmax
   
   # Rotate raster if initial longitudes don't align 
   if(!dplyr::near(poly_xmax, rast_xmax, tol=1.01)) {
@@ -69,7 +68,7 @@ calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "
   
   # Check longitude ranges match (with a tolerance of 1 in case lon +- 179 vs. +-180)
   poly_range <- c(-180, 180)
-  rast_range <- c(extent(clim_raster)@xmin, extent(clim_raster)@xmax)
+  rast_range <- c(raster::extent(clim_raster)@xmin, raster::extent(clim_raster)@xmax)
   
   if(dplyr::near(poly_range[1], rast_range[1], tol=1.01) & dplyr::near(poly_range[2], rast_range[2], tol=1.01)){
     
@@ -84,9 +83,9 @@ calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "
   ## crop the ERA raster to the polygon or at least the raster extent
   ## -----------------------------------------------
   if (!is.character(extent)){
-    clim_raster <- crop(clim_raster, extent)
+    clim_raster <- raster::crop(clim_raster, extent)
   } else {
-    clim_raster <- crop(clim_raster, extent(weights_raster))
+    clim_raster <- raster::crop(clim_raster, raster::extent(weights_raster))
   }
   
   ## Match raster crs 
@@ -97,9 +96,9 @@ calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "
   
   ## Make the values of the clim_raster resampled weights
   ## -----------------------------------------------
-  resampled_raster = resample(weights_raster, clim_raster, method="bilinear")
+  resampled_raster = raster::resample(weights_raster, clim_raster, method="bilinear")
   
-  ## Save the raster
+  ## Save the raster ---> need to decide how to choose directory; user input?
   ## -----------------------------------------------
   path = file.path(data_folder, "int", "rasterweights")
   if(!dir.exists(path)){
@@ -114,18 +113,20 @@ calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "
   
   ## Make a data.table of the values of the resampled raster with lat/lon
   ## -----------------------------------------------
-  weight_table <- as.data.frame(resampled_raster, xy=TRUE)
+  weight_table <- raster::as.data.frame(resampled_raster, xy=TRUE)
   colnames(weight_table) <- c("x", "y", "weight")
   
   ## Save the weights table
   ## -----------------------------------------------
-  fwrite(weight_table, file = file.path(path, paste0(data_source, "_", names(weights_raster), "_", extent, ".csv")))
+  data.table::fwrite(weight_table, file = file.path(path, paste0(data_source, "_", names(weights_raster), "_", extent, ".csv")))
   
   ## Return the weights table
   ## -----------------------------------------------
   return(weight_table)
   
 }
+
+# Test function may be included in examples or not at all in package
 
 ## Test function 
 ## -----------------------------------------------
