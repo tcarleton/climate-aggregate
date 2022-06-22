@@ -12,7 +12,7 @@ import os
 
 root = '/home/traceymangin/data/'
 data_folder = root + 'data'
-data_folder = '../data' # if running locally
+# data_folder = '../data' # if running locally
 
 def retrieve(year, variable, new_varname):
     
