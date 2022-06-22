@@ -61,3 +61,6 @@ calc_raster_weights(...) %>% calc_many_weights(...)
 # Where the resampled weights raster is the first argument in calc_many_weights() and so can be piped in
 ```
 
+
+The following packages need to be listed under imports in the description:
+ncdf4, data.table, raster, exactextractr, tidyverse, sf, here, crayon, dplyr
