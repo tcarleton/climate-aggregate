@@ -11,10 +11,9 @@
 #' 
 #' @return a data.table of geoweights (area weighted raster/polygon overlap)
 
-source(here::here('code', 'file_paths.R')) # define the root directory for where data is stored
-data_folder = file.path(root_dir, 'data')
+# Package will not write to any data folder, and instead put objects into environment
 
-calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "full"){
+calc_raster_weights <- function(weights_raster, data_source, extent = "full"){
   
   ## Setup 
   ## -----------------------------------------------
@@ -26,24 +25,9 @@ calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "
     weights_raster <- raster::crop(weights_raster, extent)
   }
   
-  ## Pull a demo climate data raster based on the input data source
-  ## -----------------------------------------------
-  
-  # Normalize the data source input - remove spaces & lower case
-  data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
-  
-  # Error if the data source is one that is not currently supported 
-  if(!data_source_norm %in% c('era5')){
-    stop(crayon::red('Unsupported climate data source. Supported formats are: era5'))
-  }
-  
-  # Call the demo data (small example raster) ---> need to figure out a way to do this with data stored in package
-  ncpath  <- file.path(data_folder, 'demo')
-  ncname  <- paste(data_source_norm, 'demo', sep="_")
-  nc_file <- paste0(ncpath, '/', ncname,'.nc')
-  
-  # Create ERA raster
-  clim_raster <- raster::raster(nc_file) # only reads the first band
+
+  # Create ERA raster from input raster
+  clim_raster <- raster::raster(data_source) # only reads the first band
   
   ## Raster alignment: make sure clim_raster is -180 to 180 longitude
   ## -----------------------------------------------
@@ -76,7 +60,7 @@ calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "
     
   } else {
     
-    stop(crayon::red('ERA raster longitude -180 to 180'))
+    stop(crayon::red('Raster longitude must be -180 to 180'))
     
   }
   
@@ -98,27 +82,14 @@ calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "
   ## -----------------------------------------------
   resampled_raster = raster::resample(weights_raster, clim_raster, method="bilinear")
   
-  ## Save the raster ---> need to decide how to choose directory; user input?
-  ## -----------------------------------------------
-  path = file.path(data_folder, "int", "rasterweights")
-  if(!dir.exists(path)){
-    
-    # If no - create it
-    message(crayon::yellow(paste('Creating', path)))
-    dir.create(path, recursive=T)
-    
-  }
   
-  saveRDS(resampled_raster, file = file.path(path, paste0(data_source, "_", names(weights_raster), "_", extent, ".tif")))
   
   ## Make a data.table of the values of the resampled raster with lat/lon
   ## -----------------------------------------------
   weight_table <- raster::as.data.frame(resampled_raster, xy=TRUE)
   colnames(weight_table) <- c("x", "y", "weight")
+  weight_table <- data.table::as.data.table(weight_table)
   
-  ## Save the weights table
-  ## -----------------------------------------------
-  data.table::fwrite(weight_table, file = file.path(path, paste0(data_source, "_", names(weights_raster), "_", extent, ".csv")))
   
   ## Return the weights table
   ## -----------------------------------------------
