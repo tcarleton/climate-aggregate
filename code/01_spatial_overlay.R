@@ -11,7 +11,7 @@
 #' 
 #' @return a data.table of geoweights (area weighted raster/polygon overlap)
 
-calc_geoweights <- function(data_source,  input_polygons, polygon_id, weights_raster = NULL){
+calc_geoweights <- function(data_source,  input_polygons, polygon_id, weights_table = NULL){
   
   # Create raster
   clim_raster <- raster::raster(data_source) # only reads the first band
@@ -63,10 +63,10 @@ calc_geoweights <- function(data_source,  input_polygons, polygon_id, weights_ra
   area_weight <- overlap[, .(x, y, poly_id, w_area = coverage_fraction * cell_area_km2)] # area weight = area km2 * coverage fraction 
   
   # IF weights = TRUE, merge secondary weights with area weights
-  if(!is.null(weights_raster)){
+  if(!is.null(weights_table)){
 
     # Data.table of secondary weights 
-    weights_dt <- data.table::as.data.table(weights_raster)
+    weights_dt <- data.table::as.data.table(weights_table)
     
     # Min/Max of secondary weights
     weights_xmin <- min(weights_dt$x)
@@ -96,7 +96,7 @@ calc_geoweights <- function(data_source,  input_polygons, polygon_id, weights_ra
   }
 
   # Normalize weights by polygon
-  if(!is.null(weights_raster)){
+  if(!is.null(weights_table)){
     
     w_norm <- w_merged[, ':=' (w_area = w_area / sum(w_area), weight = weight / sum(weight)), by = poly_id]
 
@@ -107,7 +107,7 @@ calc_geoweights <- function(data_source,  input_polygons, polygon_id, weights_ra
 
   
   message(crayon::yellow('Checking sum of weights within polygons'))
-  if(!is.null(weights_raster)){
+  if(!is.null(weights_table)){
     
     check_weights <- w_norm[, lapply(.SD, sum), by = poly_id,
                             .SDcols = c('w_area', 'weight')]
@@ -117,7 +117,7 @@ calc_geoweights <- function(data_source,  input_polygons, polygon_id, weights_ra
   }
   
   # Check that polygon weights sum to 1
-  if (!is.null(weights_raster)){
+  if (!is.null(weights_table)){
     for(i in nrow(check_weights)){
       
       if(!dplyr::near(check_weights$w_area[i], 1, tol=0.001) | !dplyr::near(check_weights$weight[i], 1, tol=0.001)){
