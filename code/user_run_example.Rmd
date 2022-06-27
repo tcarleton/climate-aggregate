@@ -20,14 +20,14 @@ library(pkg)
 
 Read in data
 ```{r}
-# Weights raster
-weights_raster <- read.csv(crop_yield_data)
+weights_raster <- raster::raster(here::here("data", "cropland_NW_2011.tif"))
+data_source <- raster::raster(here::here("data", "era5_demo.nc"))
 
 ```
 
 List parameters to use in function arguments
 ```{r}
-climate_data <- 'era5' # era5 is only option for now
+climate_data <- data_source
 climate_variable <- 'prcp' # temp, prcp, or uv
 daily_agg <- 'sum' # average or sum; method for aggregating from hourly to daily 
 years <- 2005:2010 # any sequence of years 2002:2020
@@ -64,3 +64,73 @@ calc_raster_weights(...) %>% calc_many_weights(...)
 
 The following packages need to be listed under imports in the description:
 ncdf4, data.table, raster, exactextractr, tidyverse, sf, here, crayon, dplyr
+
+
+Run tests on the functions not yet in package from here
+```{r}
+weight_table <- calc_raster_weights(weights_raster, to_raster, extent = raster::extent(-1,-.25,9,10))
+```
+
+
+
+Test moved from 0.5_resample_raster.R
+```{r}
+# Test function may be included in examples or not at all in package
+
+## Test function 
+## -----------------------------------------------
+
+read_potapov <- function(quad, year){
+  require(pacman)
+  pacman::p_load(here, raster)
+  # data_folder = here::here("data")
+  # data_folder = '/home/tcarleton/Climate/data'
+  crop_path <- file.path(data_folder, "raw", "weights", "cropland")
+  return(raster(file.path(crop_path, paste0("cropland_", quad, "_", year, ".tif"))))
+}
+
+# baby trial
+# p <- read_potapov(quad="NW", year=2011)
+# e <- extent(c(-1, 0, 9, 10))
+# calc_raster_weights(data_source = 'era5',  weights_raster = p, extent = e)
+
+# bigger test
+# us_counties <- tigris::counties() #Input polygons for testing
+# us_extent <- extent(us_counties)
+# calc_raster_weights(data_source = 'era5',  weights_raster = p, extent = us_extent)
+# p <- read_potapov(quad="NW", year=2011)
+# calc_raster_weights(data_source = 'era5',  weights_raster = p, extent = "full")
+
+
+# full run
+library(parallel)
+
+years <- c(2007, 2015, 2011, 2003, 2019)
+quads <- c("NW", "NE", "SW", "SE")
+
+full_potapov <- function(year){
+  library(data.table)
+  
+  rasters <- lapply(quads, read_potapov, year = year)
+  
+  no_cores <- detectCores() # Calculate the number of cores. Leave one in case something else needs to be done on the same computer at the same time. 
+  paste("working on year", year, "with", no_cores, "cores")
+  cl <- makeCluster(no_cores, type="FORK") # Initiate cluster. "FORK" means bring everything in your current environment with you. 
+  
+  tables <- parLapply(cl, rasters, calc_raster_weights, data_source = 'era5', extent = "full")
+  
+  stopCluster(cl)
+  
+  full_table <- rbindlist(tables)
+  # save the whole world of potapov data
+  path = file.path(data_folder, "int", "rasterweights")
+  fwrite(full_table, file = file.path(path, paste0("era5_cropland_", year, "_full.csv")))
+  paste("done with year", year)
+}
+
+for (year in years){
+  full_potapov(year)
+}
+#lapply(years, full_potapov)
+```
+
