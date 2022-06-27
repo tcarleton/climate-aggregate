@@ -11,49 +11,25 @@
 #' 
 #' @return a data.table of geoweights (area weighted raster/polygon overlap)
 
-source(here::here('code', 'file_paths.R')) # define the root directory for where data is stored
-
-calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, weights){
-  
-  ## Setup 
-  ## -----------------------------------------------
-  require(pacman)
-  pacman::p_load(ncdf4, data.table, raster, exactextractr, tidyverse, sf, here, crayon)
-  
-  ## Pull a demo climate data raster based on the input data source
-  ## -----------------------------------------------
-
-  # Normalize the data source input - remove spaces & lower case
-  data_source_norm <- gsub(" ", "", data_source) %>% tolower(.)
-  
-  # Error if the data source is one that is not currently supported 
-  if(!data_source_norm %in% c('era5')){
-    stop(crayon::red('Unsupported climate data source. Supported formats are: era5'))
-  }
-  
-  # Call the demo data (small example raster)
-  ncpath  <- file.path(file.path(root_dir, "data", "int", "weights"), 'data', 'demo')
-  ncname  <- paste(data_source_norm, 'demo', sep="_")
-  nc_file <- paste0(ncpath, '/', ncname,'.nc')
-  
+calc_geoweights <- function(data_source,  input_polygons, polygon_id, weights_raster = NULL){
   
   # Create raster
-  clim_raster <- raster(nc_file) # only reads the first band
+  clim_raster <- raster::raster(data_source) # only reads the first band
   
   ## Raster cell area 
   ## -----------------------------------------------
   
-  clim_area_raster <- area(clim_raster)
+  clim_area_raster <- raster::area(clim_raster)
   
   ## Raster/polygon alignment 
   ## -----------------------------------------------
   
   message(crayon::yellow('Checking for raster/polygon alignment'))
   
-  poly_xmin <- extent(input_polygons)@xmin
-  poly_xmax <- extent(input_polygons)@xmax
-  rast_xmin <- extent(clim_area_raster)@xmin
-  rast_xmax <- extent(clim_area_raster)@xmax
+  poly_xmin <- raster::extent(input_polygons)@xmin
+  poly_xmax <- raster::extent(input_polygons)@xmax
+  rast_xmin <- raster::extent(clim_area_raster)@xmin
+  rast_xmax <- raster::extent(clim_area_raster)@xmax
   
   # Shift polygons if initial longitudes don't align 
   if(!dplyr::near(poly_xmax, rast_xmax, tol=1.01)) {
@@ -68,15 +44,15 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   }
   
   # Match raster and polygon crs 
-  crs_raster <- crs(clim_area_raster)
+  crs_raster <- raster::crs(clim_area_raster)
   polygons_reproj <- input_polygons %>% 
-    st_transform(crs = crs_raster)
+    sf::st_transform(crs = crs_raster)
   
   ## Raster / Polygon overlap (using data.table) 
   ## -----------------------------------------------
   message(crayon::yellow('Extracting raster polygon overlap'))
     
-  overlap <- rbindlist(exactextractr::exact_extract(clim_area_raster, polygons_reproj, progress = T, include_xy = T), idcol = "poly_id")
+  overlap <- data.table::rbindlist(exactextractr::exact_extract(clim_area_raster, polygons_reproj, progress = T, include_xy = T), idcol = "poly_id")
   overlap[, ':=' (poly_id = polygons_reproj[[polygon_id]][poly_id], cell_area_km2 = value)] # Add the unique id for each polygon based on the input col name
   
   
@@ -87,13 +63,10 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   area_weight <- overlap[, .(x, y, poly_id, w_area = coverage_fraction * cell_area_km2)] # area weight = area km2 * coverage fraction 
   
   # IF weights = TRUE, merge secondary weights with area weights
-  if(weights){
-    
-    # File name for secondary weights 
-    weights_file <- paste0(weights_name, '.csv')
-    
+  if(!is.null(weights_raster)){
+
     # Data.table of secondary weights 
-    weights_dt <- fread(file.path(root_dir, "data", "int", "rasterweights", weights_file))
+    weights_dt <- data.table::as.data.table(weights_raster)
     
     # Min/Max of secondary weights
     weights_xmin <- min(weights_dt$x)
@@ -112,7 +85,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
     
     # Set key column in the merged dt table
     keycols = c("x", "y")
-    setkeyv(area_weight, keycols)
+    data.table::setkeyv(area_weight, keycols)
     
     # Merge with secondary weights
     w_merged <- area_weight[weights_dt, nomatch = 0]
@@ -123,7 +96,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   }
 
   # Normalize weights by polygon
-  if(weights){
+  if(!is.null(weights_raster)){
     
     w_norm <- w_merged[, ':=' (w_area = w_area / sum(w_area), weight = weight / sum(weight)), by = poly_id]
 
@@ -134,7 +107,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
 
   
   message(crayon::yellow('Checking sum of weights within polygons'))
-  if(weights){
+  if(!is.null(weights_raster)){
     
     check_weights <- w_norm[, lapply(.SD, sum), by = poly_id,
                             .SDcols = c('w_area', 'weight')]
@@ -144,7 +117,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   }
   
   # Check that polygon weights sum to 1
-  if (weights){
+  if (!is.null(weights_raster)){
     for(i in nrow(check_weights)){
       
       if(!dplyr::near(check_weights$w_area[i], 1, tol=0.001) | !dplyr::near(check_weights$weight[i], 1, tol=0.001)){
@@ -168,43 +141,8 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   }
   
   # If it doesn't error out then all weight sums = 1
-  message(crayon::green('All weights sum to 1'))
+  message(crayon::green('All weights sum to 1.'))
   
-  ## Save outputs 
-  ## -----------------------------------------------
-  
-  # Check if there is already a general weights folder
-  if(!dir.exists(file.path(root_dir, "data", "int", "weights"))){
-
-    # If no - create it
-    message(crayon::yellow('Creating data/int/weights/'))
-    dir.create(file.path(root_dir, "data", "int", "weights"), recursive=T)
-
-  }
-  
-  # If secondary weights are used add to save name
-  # Otherwise just include other inputs
-  if(weights){
-    save_name <- paste0(paste(input_polygons_name, data_source_norm, "area", weights_type, "weights", sep="_"), ".csv")
-  } else{
-    save_name <- paste0(paste(input_polygons_name, data_source_norm, "area", "weights", sep="_"), ".csv")
-  }
-  
-  # File save path
-  save_path <- file.path(root_dir, "data", "int", "weights")
-  
-  # Save message
-  message(crayon::yellow('Saving', save_name, 'to', save_path))
-  
-  # Save weights 
-  if(weights){
-    fwrite(w_norm, file = file.path(save_path, save_name))
-  } else {
-    fwrite(w_norm, file = file.path(save_path, save_name))
-  }
-
-  ## Done
-  ## -----------------------------------------------
-  message(crayon::green('Done'))
+  return(w_norm)
   
 }
