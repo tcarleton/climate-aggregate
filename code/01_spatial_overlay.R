@@ -11,7 +11,7 @@
 #' 
 #' @return a data.table of geoweights (area weighted raster/polygon overlap)
 
-source(here::here('climate-aggregate', 'code', 'file_paths.R')) # define the root directory for where data is stored
+source(here::here('code', 'file_paths.R')) # define the root directory for where data is stored
 
 calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, weights){
   

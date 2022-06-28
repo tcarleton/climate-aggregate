@@ -6,9 +6,9 @@ library(sf)
 library(here)
 
 ## Load functions
-source(here::here('climate-aggregate', 'code', 'file_paths.R')) # define the root directory for where data is stored
-source(here::here('climate-aggregate', 'code', '01_spatial_overlay.R'))
-source(here::here('climate-aggregate', 'code', '02_agg_climate_data.R'))
+source(here::here('code', 'file_paths.R')) # define the root directory for where data is stored
+source(here::here('code', '01_spatial_overlay.R'))
+source(here::here('code', '02_agg_climate_data.R'))
 
 ## Load other required data (i.e. input polygons)
 
