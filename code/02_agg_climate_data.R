@@ -2,7 +2,7 @@
 ## February 22, 2022
 ## Aggregate Climate Data: Pipeline Step 02
 
-source(here::here('code', 'file_paths.R')) # define the root directory for where data is stored
+source(here::here('climate-aggregate', 'code', 'file_paths.R')) # define the root directory for where data is stored
 
 agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 'polynomial', trans_specs, weights) {
   
