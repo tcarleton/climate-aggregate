@@ -4,4 +4,4 @@ root_dir <- file.path("/home/traceymangin/climate-aggregate")
 
 input_dir <- file.path("/home/tcarleton/Climate")
 
-save_dir <- file.path("/home/traceymangin/Climate")
+save_dir <- file.path("/home/traceymangin")
