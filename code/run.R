@@ -20,11 +20,11 @@ input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "NZL", "gad
 ## Inputs - update as necessary 
 # Defined - must match one of the options
 climate_data <- 'era5' # era5 is only option for now
-climate_variable <- 'temp' # temp, prcp, or uv
+climate_variable <- 'prcp' # temp, prcp, or uv
 daily_agg <- 'sum' # average or sum; method for aggregating from hourly to daily 
 years <- 2009:2020 # any sequence of years 2002:2020
 trans <- 'polynomial' # polynomial is only option for now
-trans_specs <- 5 # Specs must match the trans type, numeric when trans=polynomial (5 for temp, 3 for prcp)
+trans_specs <- 3 # Specs must match the trans type, numeric when trans=polynomial (5 for temp, 3 for prcp)
 id_var <- 'NAME_1' # Col name in the input_polygons shp that uniquely identifies each polygon 
 weights <- FALSE # True to define a second set of weights, FALSE to use only area weights
 
@@ -37,7 +37,7 @@ weights_name <- 'era5_cropland_2003_full' # The name of the secondary weights fi
 ## Steps to run 
 # Specify if you need to run step 1 and step 2
 # If TRUE runs both, if FALSE runs step 2 only 
-both_steps <- TRUE
+both_steps <- FALSE
 
 # both_steps = T run both, else run step 2 only 
 if(both_steps){
