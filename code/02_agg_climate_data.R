@@ -46,7 +46,7 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
   }
   
   # Data.table of weights 
-  weights_dt <- fread(file.path(root_dir, "data", "int", "weights", weights_file))
+  weights_dt <- fread(file.path(save_dir, "data", "int", "weights", weights_file))
   
   # Extent of area weights with slight buffer to make sure all cells are included 
   min_x <- min(weights_dt$x) - 0.5
@@ -65,7 +65,7 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
   }
   
   # Climate data file paths
-  ncpath  <- file.path(root_dir, 'data/raw', climate_var)
+  ncpath  <- file.path(input_dir, 'data/raw', climate_var)
   ncname  <- paste(data_source_norm, climate_var, year, sep="_")
   nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
@@ -222,11 +222,11 @@ agg_climate_data_multiyear <- function(years, data_source, climate_var, daily_ag
   sum_by_poly_multiyear <- data.table::rbindlist(sum_by_poly_multiyear)
   
   # Check if there is already an output folder
-  if(!dir.exists(file.path(root_dir, "data", "output"))){
+  if(!dir.exists(file.path(save_dir, "data", "output"))){
     
     # If no - create it
     message(crayon::yellow('Creating data/output'))
-    dir.create(file.path(root_dir, "data", "output"), recursive=T)
+    dir.create(file.path(save_dir, "data", "output"), recursive=T)
     
   }
   
@@ -243,7 +243,7 @@ agg_climate_data_multiyear <- function(years, data_source, climate_var, daily_ag
                             years[1], years[length(years)], trans, trans_specs, "area", "weights", sep="_"), ".csv")
   }
   
-  save_path <- file.path(root_dir, "data", "output")
+  save_path <- file.path(save_dir, "data", "output")
   
   # Save message
   message(crayon::yellow('Saving', save_name, 'to', save_path))

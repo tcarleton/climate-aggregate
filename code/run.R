@@ -15,7 +15,7 @@ source(here::here('code', '02_agg_climate_data.R'))
 # # Testing with CA counties
 # input_polygons <- read_sf(file.path(root_dir, "data", "shapefiles", "tl_2019_us_county", "tl_2019_us_county.shp")) %>% dplyr::filter(STATEFP == '06')
 
-input_polygons <- read_sf(file.path(root_dir, "data", "shapefiles", "JPN", "JPN_adm1.shp"))
+input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "JPN", "JPN_adm1.shp"))
 
 ## Inputs - update as necessary 
 # Defined - must match one of the options
