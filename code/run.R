@@ -26,7 +26,7 @@ years <- 2009:2020 # any sequence of years 2002:2020
 trans <- 'polynomial' # polynomial is only option for now
 trans_specs <- 5 # Specs must match the trans type, numeric when trans=polynomial (5 for temp, 3 for prcp)
 id_var <- 'NAME_1' # Col name in the input_polygons shp that uniquely identifies each polygon 
-weights <- TRUE # True to define a second set of weights, FALSE to use only area weights
+weights <- FALSE # True to define a second set of weights, FALSE to use only area weights
 
 # Flexible - not limited to specific options
 input_polygons_name <- 'nzl_regions' # Name used in saving function outputs; should relate to the polygons used
