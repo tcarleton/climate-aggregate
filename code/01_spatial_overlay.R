@@ -32,7 +32,8 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   }
   
   # Call the demo data (small example raster)
-  ncpath  <- file.path(file.path(input_dir, "data", "int", "weights"), 'data', 'demo')
+  # ncpath  <- file.path(file.path(input_dir, "data", "int", "weights"), 'data', 'demo')
+  ncpath  <- file.path(file.path(input_dir, 'data', 'demo'))
   ncname  <- paste(data_source_norm, 'demo', sep="_")
   nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
