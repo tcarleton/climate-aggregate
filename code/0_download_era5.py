@@ -10,7 +10,7 @@ from pyprojroot import here
 import cdsapi
 import os
 
-root = '/home/tcarleton/climate-aggregate/'
+root = '/home/tcarleton/Climate/'
 data_folder = root + 'data'
 # data_folder = '../data' # if running locally
 
@@ -92,5 +92,5 @@ for v in new_varnames:
     
 # download data 2002-2021 for each variable
 for i in range(len(variables)):
-    for y in range(2002, 2022):
+    for y in range(1967, 2001):
         retrieve(y, variables[i], new_varnames[i])

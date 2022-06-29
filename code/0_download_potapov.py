@@ -5,7 +5,7 @@
 import requests
 import os
 
-root = '/home/tcarleton/climate-aggregate/'
+root = '/home/tcarleton/Climate/'
 data_folder = root + 'data'
 # data_folder = '../data' # if running locally
 
