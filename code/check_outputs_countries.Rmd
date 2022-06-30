@@ -1,0 +1,473 @@
+---
+title: "check_outputs_country"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(tigris)
+library(sf)
+
+## add paths
+main_path <- '/Volumes/GoogleDrive/Shared Drives/emlab/projects/current-projects/climate-data-pipeline/'
+
+output_path <- paste0(main_path, 'agg-outputs/')
+
+## files
+weight_file  <- 'weights/jpn_prefecture_era5_area_crop_weights.csv'
+
+temp_file <- 'output/jpn_prefecture_era5_temp_sum_2009_2018_polynomial_5_area_crop_weights.csv'
+
+prcp_file <- 'output/jpn_prefecture_era5_prcp_sum_2009_2018_polynomial_3_area_crop_weights.csv'
+
+polygon_file <- 'shapefiles/JPN/JPN_adm1.shp'
+
+# Step 1 output - weights
+
+# out_1 <- read_csv(file.path(here::here(), "data", "int", "weights", "ca_counties_era5_area_crop_weights.csv"))
+
+out_1 <- read_csv(paste0(output_path, weight_file))
+
+
+# Step 2 output
+# out_2 <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_temp_2005_2010_polynomial_3.csv"))
+
+# Compare Step 2 output with crop weights 
+# out_2_crop <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_temp_2005_2010_polynomial_3_area_crop_weights.csv"))
+
+out_2_crop_temp <- read_csv(paste0(output_path, temp_file))
+
+# Compare Step 2 output with crop weights 
+
+out_2_crop_prcp <- read_csv(paste0(output_path, prcp_file))
+
+
+
+# # Untransformed monthly aggregated era5 data 
+# era5_temp_daily <- read_csv(file.path(here::here(), "data", "output",
+#                                    "ca_counties_test_temp_2010.csv"))
+# 
+# # Step 2 output precip 
+# out_2_prcp <- read_csv(file.path(here::here(), "data", "output", "ca_counties_era5_prcp_sum_2005_2010_polynomial_3_area_crop_weights.csv"))
+# 
+# # Untransformed monthly era5 precip
+# era5_prcp_daily <- read_csv(file.path(here::here(), "data", "output",
+#                                    "ca_counties_test_prcp_2010.csv"))
+
+# shapefile for checking maps
+# us_counties <- tigris::counties()
+# ca_counties <- us_counties %>% 
+#   filter(STATEFP == '06')
+
+country_shp <- read_sf(paste0(main_path, polygon_file)) 
+
+
+
+```
+
+
+# Check Step 1 Outputs
+
+## Area Weights
+
+Step 1 output is the overlap between polygons for Japan and the climate rasters. There should be `nrow(country_shp)` polygons, representing the `nrow(country_shp)` prefectures in the country. Area weights are the fraction of the polygon falling within each grid cell and are normalized by polygon so that all cells within a polygon sum to 1.  
+
+```{r check-area-weights}
+check_id_counts <- out_1 %>% 
+  select(poly_id) %>% 
+  distinct() #47 - good 
+
+# Map by polygon color 
+map_polys <- ggplot() + 
+  geom_raster(data = out_1, aes(x=x, y=y, fill=poly_id),
+              alpha = 0.8) +
+  geom_sf(data = country_shp, color = 'black', fill = NA) + 
+  labs(x = '',
+       y = '') + 
+  theme_bw() + 
+  theme(legend.position = '')
+
+# Check x/y poly ids 
+xy_ids <- out_1 %>% 
+  group_by(x,y) %>% 
+  summarize(n_poly_ids = n())
+
+# Map area weights 
+# Area weight = fraction of the cell covered by the polygon * area km 2
+# Normalized by polygon so all polygons should sum to 1
+map_area_weights <- ggplot() + 
+  geom_raster(data = out_1, aes(x=x, y=y, fill=w_area)) +
+  geom_sf(data = country_shp, color = 'black', fill = NA) + 
+  labs(fill = 'Area Weight',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c() + 
+  theme_bw() 
+
+# Check sum weights
+sum_area_weights <- out_1 %>% 
+  group_by(poly_id) %>% 
+  mutate(sum_w_area = sum(w_area)) %>% 
+  ungroup() # All = 1
+```
+
+```{r message=F, warning=F, echo=F}
+map_area_weights
+```
+
+## Crop Weights
+
+Crop weights are the fraction of the crops within the polygon occurring within a given grid cell. These weights are also normalized by polygon so that all cells within a polygon sum to 1. 
+
+```{r check-crop-weights}
+# Map crop weights 
+# crop weight = fraction of the cell covered by the polygon * crop weight
+# Normalized by polygon so all polygons should sum to 1
+map_crop_weights <- ggplot() + 
+  geom_raster(data = out_1, aes(x=x, y=y, fill=weight)) +
+  geom_sf(data = country_shp, color = 'black', fill = NA) + 
+  labs(fill = 'Crop Weight',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c() + 
+  theme_bw() 
+
+# Check sum weights
+sum_crop_weights <- out_1 %>% 
+  group_by(poly_id) %>% 
+  mutate(sum_weight= sum(weight)) %>% 
+  ungroup() # All = 1
+```
+
+```{r message=F, warning=F, echo=F}
+map_crop_weights
+```
+
+# Check Step 2 Output
+
+## Temperature 
+
+```{r}
+# Check that each polygon has a value for all 12 months 
+check_out2 <- out_2_crop_temp %>% 
+  group_by(year, poly_id) %>% 
+  summarize(n_months = n()) # all have 12
+
+# Check for any na values
+check_nas <- out_2_crop_temp %>% 
+  filter(is.na(order_1) | is.na(order_2) | is.na(order_3)) # None
+
+# na_counties <- ca_counties %>% 
+#   filter(GEOID %in% c('06015', '06023', '06025', '06071', '06073')) # San Diego, San Bernardino, Humboldt, Del Norte, Imperial 
+
+# Convert the first order to avg temp by month so it's easier to understand the values 
+# use value / days in month 
+
+leap_years <- seq(1960, 2020, by = 4)
+
+
+out_2 <- out_2_crop_temp %>% 
+  mutate(days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
+                                   month == 'month_02' & year %in% leap_years ~ 29,
+                                   month == 'month_02' & !year %in% leap_years ~ 28, 
+                                   TRUE ~ 31)) %>% 
+  mutate(order_1_avg = order_1 / days_in_month)
+
+# Check leap years
+feb <- out_2 %>% 
+  filter(month == 'month_02')
+
+leap_plot <- ggplot() + 
+  # geom_line(data = feb, aes(x = year, y = order_1, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = feb, aes(x = year, y = order_1_avg, color = as.factor(poly_id), group = poly_id)) + 
+  geom_vline(xintercept = 2016,
+             linetype = 'longdash') + 
+  scale_x_continuous(expand = c(0,0),
+                   breaks = seq(2009, 2018, by=1)) + 
+  labs(x = 'Year',
+       y = 'Avg February Temperatures') + 
+  theme_bw() + 
+  theme(legend.position = '')
+
+## Graphs 
+# Polynomial values over time by polygon (one graph for each polynomial order)
+poly1_plot <- ggplot() + 
+  geom_line(data = out_2, aes(x = month, y = order_1_avg, color = as.factor(poly_id), group = poly_id)) + 
+  facet_wrap(~year) + 
+  scale_x_discrete(expand = c(0,0),
+                   breaks = c('month_01', 'month_03', 'month_05',
+                              'month_07', 'month_09', 'month_11'),
+                   labels = c('Jan', 'Mar', 'May', 'Jul',
+                              'Sept', 'Nov')) +
+  scale_y_continuous(expand = c(0,0),
+                     limits = c(-10,40),
+                     breaks = seq(-10,40,10)) +
+  labs(x = 'Month',
+       y = 'Averarge Monthly Temp\n(First Order / Days in Month)') + 
+  theme_bw() + 
+  theme(legend.position = '')
+
+poly2_plot <- ggplot() + 
+  geom_line(data = out_2, aes(x = month, y = order_2, color = as.factor(poly_id), group = poly_id)) + 
+  facet_wrap(~year) + 
+  scale_x_discrete(expand = c(0,0),
+                   breaks = c('month_01', 'month_03', 'month_05',
+                              'month_07', 'month_09', 'month_11'),
+                   labels = c('Jan', 'Mar', 'May', 'Jul',
+                              'Sept', 'Nov')) + 
+  scale_y_continuous(expand = c(0,0),
+                     limits = c(100,42000)) +
+  labs(x = 'Month',
+       y = 'Summed Monthly Temperature (Second Order)') + 
+  theme_bw() + 
+  theme(legend.position = '')
+
+poly3_plot <- ggplot() + 
+  geom_line(data = out_2, aes(x = month, y = order_3, color = as.factor(poly_id), group = poly_id)) + 
+  facet_wrap(~year) + 
+  scale_x_discrete(expand = c(0,0),
+                   breaks = c('month_01', 'month_03', 'month_05',
+                              'month_07', 'month_09', 'month_11'),
+                   labels = c('Jan', 'Mar', 'May', 'Jul',
+                              'Sept', 'Nov')) + 
+  scale_y_continuous(expand = c(0,0),
+                     labels = scales::comma) +
+  labs(x = 'Month',
+       y = 'Summed Monthly Temperature (Third Order)') + 
+  theme_bw() + 
+  theme(legend.position = '')
+
+## Maps 
+# Join first order outputs to the shp 
+ca_counties <- ca_counties %>% 
+  mutate(poly_id = as.numeric(GEOID)) %>% 
+  select(poly_id)
+
+out_2 <- out_2 %>% 
+  filter(!is.na(month))
+
+out2_sf <- merge(ca_counties, out_2, all = TRUE)
+
+# Map first order values by county for lowest temp month (Feb) 
+map_order1_feb <- out2_sf %>% 
+  filter(month == 'month_02') %>% 
+  ggplot() + 
+  geom_sf(aes(fill = order_1_avg)) + 
+  labs(fill = 'Avg Feb\nTemperature\n(1st Order)',
+       title = 'area weights',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
+  facet_wrap(~year) + 
+  theme_bw() 
+
+# Map first order values for highest temp month (July)
+map_order1_jul <- out2_sf %>% 
+  filter(month == 'month_07') %>% 
+  ggplot() + 
+  geom_sf(aes(fill = order_1_avg)) + 
+  labs(fill = 'Avg July\nTemperature\n(1st Order)',
+       title = 'area weights',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
+  facet_wrap(~year) + 
+  theme_bw() 
+
+## Maps for output with crop weights 
+# Convert the first order to avg temp by month so it's easier to understand the values 
+out_2_crop <- out_2_crop %>% 
+  mutate(days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
+                                   month == 'month_02' & year == 2008 ~ 29,
+                                   month == 'month_02' & year != 2008 ~ 28, 
+                                   TRUE ~ 31)) %>% 
+  mutate(order_1_avg = order_1 / days_in_month)
+
+out2_crop_sf <- merge(ca_counties, out_2_crop, all = TRUE)
+
+# Map first order values by polygon for lowest temp month (Feb) 
+map_order1_feb_crop <- out2_crop_sf %>% 
+  filter(month == 'month_02') %>% 
+  ggplot() + 
+  geom_sf(aes(fill = order_1_avg)) + 
+  labs(fill = 'Avg Feb\nTemperature\n(1st Order)',
+       title = 'area + crop weights',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
+  facet_wrap(~year) + 
+  theme_bw() 
+
+# Map first order values for highest temp month (July)
+map_order1_jul_crop <- out2_crop_sf %>% 
+  filter(month == 'month_07') %>% 
+  ggplot() + 
+  geom_sf(aes(fill = order_1_avg)) + 
+  labs(fill = 'Avg July\nTemperature\n(1st Order)',
+       title = 'area + crop weights',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
+  facet_wrap(~year) + 
+  theme_bw() 
+```
+
+```{r message=F, warning=F, echo=F}
+map_order1_feb
+map_order1_feb_crop
+```
+
+
+```{r message=F, warning=F, echo=F}
+map_order1_jul
+map_order1_jul_crop
+```
+
+## Precipitation
+
+```{r}
+# Check that each polygon has a value for all 12 months 
+check_out2 <- out_2_prcp %>% 
+  group_by(year, poly_id) %>% 
+  summarize(n_months = n()) # Looks good 
+
+
+## Maps 
+# Join first order outputs to the shp 
+ca_counties <- ca_counties %>% 
+  mutate(poly_id = as.numeric(GEOID)) %>% 
+  select(poly_id)
+
+out2_prcp_sf <- merge(ca_counties, out_2_prcp, all = TRUE)
+
+# Map first order values by county for lowest precip month (July) 
+map_prcp_jul <- out2_prcp_sf %>% 
+  filter(month == 'month_07') %>% 
+  ggplot() + 
+  geom_sf(aes(fill = order_1)) + 
+  labs(fill = 'Total July\nPrecipitation\n(1st Order)',
+       title = 'area + crop weights',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(option = 'mako', direction = -1,
+                       limits = c(0, 0.07)) + 
+  facet_wrap(~year) + 
+  theme_bw() 
+
+# Map first order values for highest precip month (December)
+map_prcp_dec <- out2_prcp_sf %>% 
+  filter(month == 'month_12') %>% 
+  ggplot() + 
+  geom_sf(aes(fill = order_1)) + 
+  labs(fill = 'Total Dec\nPrecipitation\n(1st Order)',
+       title = 'area + crop weights',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(option = 'mako', direction = -1,
+                       limits = c(0, 0.61)) + 
+  facet_wrap(~year) + 
+  theme_bw() 
+```
+
+
+# Compare to Raw Data
+
+## Temperature 
+
+Compare the above Feb & July maps to the raw era5 data aggregated to the monthly scale for 2010. These data haven't gone through any of the non-linear transformations. 
+
+```{r}
+# Back to -180 to 180
+# Add days in the month 
+era5_temp_daily <- era5_temp_daily %>% 
+  mutate(x = ifelse(x>180, x-360, x),
+         days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
+                                   month == 'month_02' ~ 28, 
+                                   TRUE ~ 31))
+
+era5_t_monthly_by_grid <- era5_temp_daily %>% 
+  group_by(x, y, poly_id, month, days_in_month) %>% 
+  summarize(sum_temp = sum(value)) %>% 
+  mutate(avg_temp = sum_temp / days_in_month)
+
+## Maps for untransformed era5 data 
+# February 
+era5_temp_feb <- era5_t_monthly_by_grid %>% 
+  filter(month == 'month_02')
+
+map_era5_t_feb <- ggplot() + 
+  geom_raster(data = era5_temp_feb,
+              aes(x=x, y=y, fill = avg_temp)) + 
+  geom_sf(data = ca_counties, fill=NA, color='black') + 
+  labs(fill = 'Avg Feb\nTemperature\n(Raw ERA5)',
+       title = 'Montly ERA5 (2010)',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
+  theme_bw() 
+
+# July 
+era5_temp_jul <- era5_monthly_by_grid %>% 
+  filter(month == 'month_07')
+
+map_era5_t_jul <- ggplot() + 
+  geom_raster(data = era5_temp_jul,
+              aes(x=x, y=y, fill = avg_temp)) + 
+  geom_sf(data = ca_counties, fill=NA, color='black') + 
+  labs(fill = 'Avg July\nTemperature\n(Raw ERA5)',
+       title = 'Montly ERA5 (2010)',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(limits = c(-7, 37)) + 
+  theme_bw() 
+```
+
+## Precipitation 
+
+Compare the above July & December maps to the raw era5 data aggregated to the monthly scale for 2010. These data haven't gone through any of the non-linear transformations. 
+
+```{r}
+# Back to -180 to 180
+# Add days in the month 
+era5_prcp_daily <- era5_prcp_daily %>% 
+  mutate(x = ifelse(x>180, x-360, x))
+
+era5_p_monthly_by_grid <- era5_prcp_daily %>% 
+  group_by(x, y, poly_id, month) %>% 
+  summarize(sum_prcp = sum(value)) 
+
+## Maps for untransformed era5 data 
+# July
+era5_prcp_jul <- era5_p_monthly_by_grid %>% 
+  filter(month == 'month_07')
+
+map_era5_p_jul <- ggplot() + 
+  geom_raster(data = era5_prcp_jul,
+              aes(x=x, y=y, fill = sum_prcp)) + 
+  geom_sf(data = ca_counties, fill=NA, color='black') + 
+  labs(fill = 'Total July\nPrecipitation (meters)',
+       title = 'Montly ERA5 (2010)',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(option = 'mako', direction = -1,
+                       limits = c(0, 0.07)) + 
+  theme_bw() 
+
+# December 
+era5_prcp_dec <- era5_p_monthly_by_grid %>% 
+  filter(month == 'month_12')
+
+map_era5_p_dec <- ggplot() + 
+  geom_raster(data = era5_prcp_dec,
+              aes(x=x, y=y, fill = sum_prcp)) + 
+  geom_sf(data = ca_counties, fill=NA, color='black') + 
+  labs(fill = 'Total Dec\nPrecipitation (meters)',
+       title = 'Montly ERA5 (2010)',
+       x = '',
+       y = '') + 
+  scale_fill_viridis_c(option = 'mako', direction = -1,
+                       limits = c(0, 0.61)) + 
+  theme_bw() 
+```
