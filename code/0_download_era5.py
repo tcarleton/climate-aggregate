@@ -10,7 +10,7 @@ from pyprojroot import here
 import cdsapi
 import os
 
-root = '/home/tcarleton/Climate/'
+root = '/home/traceymangin/data/'
 data_folder = root + 'data'
 # data_folder = '../data' # if running locally
 
@@ -73,15 +73,15 @@ def retrieve(year, variable, new_varname):
 
 # define the variables you're interested in 
 variables = [
-    'total_precipitation', 
-    'downward_uv_radiation_at_the_surface', 
-    '2m_temperature'
+    'total_precipitation' 
+    # 'downward_uv_radiation_at_the_surface', 
+    # '2m_temperature'
 ]
 
 new_varnames = [
-    'prcp', 
-    'uv', 
-    'temp'
+    'prcp' 
+    # 'uv', 
+    # 'temp'
 ]
 
 # make the directories for the variables
@@ -92,5 +92,5 @@ for v in new_varnames:
     
 # download data 2002-2021 for each variable
 for i in range(len(variables)):
-    for y in range(1967, 2001):
+    for y in range(1976, 1978):
         retrieve(y, variables[i], new_varnames[i])
