@@ -33,7 +33,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   
   # Call the demo data (small example raster)
   # ncpath  <- file.path(file.path(input_dir, "data", "int", "weights"), 'data', 'demo')
-  ncpath  <- file.path(file.path(input_dir, 'data', 'demo'))
+  ncpath  <- file.path(input_dir, 'data', 'demo')
   ncname  <- paste(data_source_norm, 'demo', sep="_")
   nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
@@ -128,8 +128,16 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
     keycols = c("x", "y")
     setkeyv(area_weight, keycols)
     
-    # Merge with secondary weights
-    w_merged <- area_weight[weights_dt, nomatch = 0]
+    
+    ## NOTE from Tracey: I think that this fills non matches with zeros, not NAs
+    ## added the code below, which matches by x and y, retains all on left, and fills no matches with NAs.
+    # # Merge with secondary weights
+    # w_merged <- area_weight[weights_dt, nomatch = 0]
+    
+    # Merge with secondary weights, NA for missing values
+    w_merged <- merge(area_weight, weights_dt,
+                      by = c('x', 'y'),
+                      all.x = T)
     
     # Weight in pixel = w_area * weight
     w_merged[, weight := weight * w_area]
@@ -142,6 +150,8 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
     
     # Update the weight to equal w_area for all grid cells in na_polys 
     w_merged[, weight := data.table::fifelse(poly_id %in% na_polys$poly_id, w_area, weight)]
+    
+    
     
   }
 
