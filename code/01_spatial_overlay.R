@@ -33,7 +33,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   
   # Call the demo data (small example raster)
   # ncpath  <- file.path(file.path(input_dir, "data", "int", "weights"), 'data', 'demo')
-  ncpath  <- file.path(file.path(input_dir, 'data', 'demo'))
+  ncpath  <- file.path(input_dir, 'data', 'demo')
   ncname  <- paste(data_source_norm, 'demo', sep="_")
   nc_file <- paste0(ncpath, '/', ncname,'.nc')
   
@@ -99,6 +99,8 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
     # Min/Max of secondary weights
     weights_xmin <- min(weights_dt$x)
     weights_xmax <- max(weights_dt$x)
+    weights_ymin <- min(weights_dt$y)
+    weights_ymax <- max(weights_dt$y)
     
     # If weights don't match raster convert them 
     if(!dplyr::near(weights_xmax, rast_xmax, tol=1.01)) {
@@ -111,15 +113,45 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
       
     }
     
+    # Warning if weights don't overlap fully with polygons 
+    weights_ext <- extent(weights_xmin, weights_xmax, weights_ymin, weights_ymax)
+    poly_ext <- extent(input_polygons)
+    
+    if(poly_ext@xmin < weights_ext@xmin | poly_ext@xmax > weights_ext@xmax |
+       poly_ext@ymin < weights_ext@ymin | poly_ext@ymax > weights_ext@ymax) {
+      
+      warning(crayon::red("Warning: some of your polygons fall outside of the input weights data layer, meaning weights cannot be calculated and area-weights will be returned"))
+      
+    }
+    
     # Set key column in the merged dt table
     keycols = c("x", "y")
     setkeyv(area_weight, keycols)
     
-    # Merge with secondary weights
-    w_merged <- area_weight[weights_dt, nomatch = 0]
+    
+    ## NOTE from Tracey: I think that this fills non matches with zeros, not NAs
+    ## added the code below, which matches by x and y, retains all on left, and fills no matches with NAs.
+    # # Merge with secondary weights
+    # w_merged <- area_weight[weights_dt, nomatch = 0]
+    
+    # Merge with secondary weights, NA for missing values
+    w_merged <- merge(area_weight, weights_dt,
+                      by = c('x', 'y'),
+                      all.x = T)
     
     # Weight in pixel = w_area * weight
     w_merged[, weight := weight * w_area]
+    
+    # List any polygons with NA values in 1 or more grid cells
+    na_polys <- data.frame(w_merged) %>% 
+      dplyr::filter(is.na(weight)) %>% 
+      dplyr::select(poly_id) %>% 
+      distinct()
+    
+    # Update the weight to equal w_area for all grid cells in na_polys 
+    w_merged[, weight := data.table::fifelse(poly_id %in% na_polys$poly_id, w_area, weight)]
+    
+    
     
   }
 
