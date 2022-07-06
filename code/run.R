@@ -29,7 +29,7 @@ id_var <- 'NAME_1' # Col name in the input_polygons shp that uniquely identifies
 weights <- TRUE # True to define a second set of weights, FALSE to use only area weights
 
 # Flexible - not limited to specific options
-input_polygons_name <- 'jpn_prefecture_test' # Name used in saving function outputs; should relate to the polygons used
+input_polygons_name <- 'jpn_prefecture' # Name used in saving function outputs; should relate to the polygons used
 weights_type <- 'crop' # Added to the name of the output file to indicate what secondary weights are used 
 weights_name <- 'era5_cropland_2003_full' # The name of the secondary weights file, cannot be blank if weights = TRUE
 
@@ -37,7 +37,7 @@ weights_name <- 'era5_cropland_2003_full' # The name of the secondary weights fi
 ## Steps to run 
 # Specify if you need to run step 1 and step 2
 # If TRUE runs both, if FALSE runs step 2 only 
-both_steps <- FALSE
+both_steps <- TRUE
 
 # both_steps = T run both, else run step 2 only 
 if(both_steps){
