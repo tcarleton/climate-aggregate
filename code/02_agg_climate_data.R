@@ -98,6 +98,13 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
     # Average over each set of 24 layers 
     indices<-rep(1:(nlayers(clim_raster)/24),each=24)
     clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=mean) #Stack of 365/366 layers
+    
+    # For temperature convert values in Kelvin to Celsius C = K - 273.15
+    if(climate_var == 'temp'){
+      
+      clim_daily <- clim_daily - 273.15
+    }
+    
   }
 
   ## Sum 
@@ -113,12 +120,13 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
     # Sum over each set of 24 layers 
     indices<-rep(1:(nlayers(clim_raster)/24),each=24)
     clim_daily <- raster::stackApply(clim_raster, indices = indices, fun=sum) #Stack of 365/366 layers
-  }
-  
-  # For temperature convert values in Kelvin to Celsius C = K - 273.15
-  if(climate_var == 'temp'){
     
-    clim_daily <- clim_daily - 273.15
+    # For temperature convert values in Kelvin to Celsius C = K - 273.15
+    if(climate_var == 'temp'){
+      
+      clim_daily <- clim_daily - (273.15 * 24)
+    }
+    
   }
   
   ## Nonlinearities 
