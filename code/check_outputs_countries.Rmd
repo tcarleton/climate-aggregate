@@ -13,6 +13,8 @@ library(sf)
 ## add paths
 main_path <- '/Volumes/GoogleDrive/Shared Drives/emlab/projects/current-projects/climate-data-pipeline/'
 
+save_path <- paste0(main_path, 'diagnostic-figs/JPN/')
+
 output_path <- paste0(main_path, 'agg-outputs/')
 
 ## files
@@ -157,7 +159,7 @@ check_out2 <- out_2_crop_temp %>%
 
 # Check for any na values
 check_nas <- out_2_crop_temp %>% 
-  filter(is.na(order_1) | is.na(order_2) | is.na(order_3)) # None
+  filter(is.na(order_1) | is.na(order_2) | is.na(order_3) | is.na(order_4) | is.na(order_5)) # None
 
 # na_counties <- ca_counties %>% 
 #   filter(GEOID %in% c('06015', '06023', '06025', '06071', '06073')) # San Diego, San Bernardino, Humboldt, Del Norte, Imperial 
@@ -168,20 +170,21 @@ check_nas <- out_2_crop_temp %>%
 leap_years <- seq(1960, 2020, by = 4)
 
 
-out_2 <- out_2_crop_temp %>% 
+out_2_crop_temp2 <- out_2_crop_temp %>% 
   mutate(days_in_month = case_when(month %in% c('month_04', 'month_06', 'month_09', 'month_11') ~ 30,
                                    month == 'month_02' & year %in% leap_years ~ 29,
                                    month == 'month_02' & !year %in% leap_years ~ 28, 
                                    TRUE ~ 31)) %>% 
-  mutate(order_1_avg = order_1 / days_in_month)
+  mutate(order_1_avg = order_1 / days_in_month,
+         order_1_avg_hr = order_1_avg / 24)
 
 # Check leap years
-feb <- out_2 %>% 
+feb <- out_2_crop_temp2 %>% 
   filter(month == 'month_02')
 
 leap_plot <- ggplot() + 
   # geom_line(data = feb, aes(x = year, y = order_1, color = as.factor(poly_id), group = poly_id)) + 
-  geom_line(data = feb, aes(x = year, y = order_1_avg, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = feb, aes(x = year, y = order_1_avg_hr, color = as.factor(poly_id), group = poly_id)) + 
   geom_vline(xintercept = 2016,
              linetype = 'longdash') + 
   scale_x_continuous(expand = c(0,0),
@@ -194,7 +197,7 @@ leap_plot <- ggplot() +
 ## Graphs 
 # Polynomial values over time by polygon (one graph for each polynomial order)
 poly1_plot <- ggplot() + 
-  geom_line(data = out_2, aes(x = month, y = order_1_avg, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = out_2_crop_temp2, aes(x = month, y = order_1_avg_hr, color = as.factor(poly_id), group = poly_id)) + 
   facet_wrap(~year) + 
   scale_x_discrete(expand = c(0,0),
                    breaks = c('month_01', 'month_03', 'month_05',
@@ -205,27 +208,26 @@ poly1_plot <- ggplot() +
                      limits = c(-10,40),
                      breaks = seq(-10,40,10)) +
   labs(x = 'Month',
-       y = 'Averarge Monthly Temp\n(First Order / Days in Month)') + 
+       y = 'Averarge Monthly Temp\n(First Order / Days in Month / 24hrs)') + 
   theme_bw() + 
   theme(legend.position = '')
 
 poly2_plot <- ggplot() + 
-  geom_line(data = out_2, aes(x = month, y = order_2, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = out_2_crop_temp2, aes(x = month, y = order_2, color = as.factor(poly_id), group = poly_id)) + 
   facet_wrap(~year) + 
   scale_x_discrete(expand = c(0,0),
                    breaks = c('month_01', 'month_03', 'month_05',
                               'month_07', 'month_09', 'month_11'),
                    labels = c('Jan', 'Mar', 'May', 'Jul',
                               'Sept', 'Nov')) + 
-  scale_y_continuous(expand = c(0,0),
-                     limits = c(100,42000)) +
+  scale_y_continuous(expand = c(0,0)) +
   labs(x = 'Month',
        y = 'Summed Monthly Temperature (Second Order)') + 
   theme_bw() + 
   theme(legend.position = '')
 
 poly3_plot <- ggplot() + 
-  geom_line(data = out_2, aes(x = month, y = order_3, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = out_2_crop_temp2, aes(x = month, y = order_3, color = as.factor(poly_id), group = poly_id)) + 
   facet_wrap(~year) + 
   scale_x_discrete(expand = c(0,0),
                    breaks = c('month_01', 'month_03', 'month_05',
@@ -241,20 +243,20 @@ poly3_plot <- ggplot() +
 
 ## Maps 
 # Join first order outputs to the shp 
-ca_counties <- ca_counties %>% 
-  mutate(poly_id = as.numeric(GEOID)) %>% 
+country_areas <- country_shp %>% 
+  mutate(poly_id = NAME_1) %>% 
   select(poly_id)
 
-out_2 <- out_2 %>% 
+out_3 <- out_2_crop_temp2 %>% 
   filter(!is.na(month))
 
-out2_sf <- merge(ca_counties, out_2, all = TRUE)
+out3_sf <- merge(country_areas, out_3, all = TRUE)
 
 # Map first order values by county for lowest temp month (Feb) 
-map_order1_feb <- out2_sf %>% 
+map_order1_feb <- out3_sf %>% 
   filter(month == 'month_02') %>% 
   ggplot() + 
-  geom_sf(aes(fill = order_1_avg)) + 
+  geom_sf(aes(fill = order_1_avg_hr)) + 
   labs(fill = 'Avg Feb\nTemperature\n(1st Order)',
        title = 'area weights',
        x = '',
@@ -262,6 +264,8 @@ map_order1_feb <- out2_sf %>%
   scale_fill_viridis_c(limits = c(-7, 37)) + 
   facet_wrap(~year) + 
   theme_bw() 
+
+ggsave(map_order1_feb, filename = paste0(save_path, 'feb_out.png'))
 
 # Map first order values for highest temp month (July)
 map_order1_jul <- out2_sf %>% 

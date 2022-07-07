@@ -92,5 +92,5 @@ for v in new_varnames:
     
 # download data 2002-2021 for each variable
 for i in range(len(variables)):
-    for y in range(1990, 1995):
+    for y in range(1978, 1990):
         retrieve(y, variables[i], new_varnames[i])
