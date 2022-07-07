@@ -182,7 +182,7 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
   setkeyv(clim_dt, keycols)
 
   # Keyed merge on the x/y column 
-  merged_dt <- clim_dt[weights_dt] #cols: x, y, date, value cols 1:k, poly_id, w_area, weight (if weights = T)
+  merged_dt <- clim_dt[weights_dt, allow.cartesian = TRUE] #cols: x, y, date, value cols 1:k, poly_id, w_area, weight (if weights = T)
  
   ## Multiply weights x climate value (all 1:k values); aggregate by month and polygon  
   ## -----------------------------------------------
