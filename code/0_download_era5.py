@@ -73,9 +73,9 @@ def retrieve(year, variable, new_varname):
 
 # define the variables you're interested in 
 variables = [
-    'total_precipitation' 
+    # 'total_precipitation' 
     # 'downward_uv_radiation_at_the_surface', 
-    # '2m_temperature'
+    '2m_temperature'
 ]
 
 new_varnames = [
