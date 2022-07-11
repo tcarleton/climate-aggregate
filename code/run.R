@@ -21,7 +21,7 @@ input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "JPN", "JPN
 # Defined - must match one of the options
 climate_data <- 'era5' # era5 is only option for now
 climate_variable <- 'temp' # temp, prcp, or uv
-daily_agg <- 'sum' # average or sum; method for aggregating from hourly to daily 
+daily_agg <- 'average' # average or sum; method for aggregating from hourly to daily 
 years <- 2009:2018 # any sequence of years 2002:2020
 trans <- 'polynomial' # polynomial is only option for now
 trans_specs <- 5 # Specs must match the trans type, numeric when trans=polynomial (5 for temp, 3 for prcp)
