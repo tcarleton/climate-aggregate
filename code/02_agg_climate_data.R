@@ -105,12 +105,6 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
       clim_daily <- clim_daily - 273.15
     }
     
-    # For prcp convert values from m to mm
-    if(climate_var == 'prcp'){
-      
-      clim_daily <- clim_daily * 1000
-    }
-    
   }
 
   ## Sum 
@@ -133,11 +127,12 @@ agg_climate_data <- function(year, data_source, climate_var, daily_agg, trans = 
       clim_daily <- clim_daily - (273.15 * 24)
     }
     
-    if(climate_var == 'prcp'){
-      
-      clim_daily <- clim_daily * 1000
-    }
+  }
+  
+  ## convert prcp m to mm
+  if(climate_var == 'prcp'){
     
+    clim_daily <- clim_daily * 1000
   }
   
   ## Nonlinearities 
