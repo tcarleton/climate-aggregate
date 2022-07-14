@@ -9,6 +9,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 # library(tigris)
 library(sf)
+library(cowplot)
 
 ## add paths
 main_path <- '/Volumes/GoogleDrive/Shared Drives/emlab/projects/current-projects/climate-data-pipeline/'
@@ -20,7 +21,7 @@ output_path <- paste0(main_path, 'agg-outputs/')
 ## files
 weight_file  <- 'weights/jpn_prefecture_era5_area_crop_weights.csv'
 
-temp_file <- 'output/jpn_prefecture_era5_temp_sum_2009_2018_polynomial_5_area_crop_weights.csv'
+temp_file <- 'output/jpn_prefecture_era5_temp_average_2009_2018_polynomial_5_area_crop_weights.csv'
 
 prcp_file <- 'output/jpn_prefecture_era5_prcp_sum_2009_2018_polynomial_3_area_crop_weights.csv'
 
@@ -101,7 +102,7 @@ xy_ids <- out_1 %>%
 # Normalized by polygon so all polygons should sum to 1
 map_area_weights <- ggplot() + 
   geom_raster(data = out_1, aes(x=x, y=y, fill=w_area)) +
-  geom_sf(data = country_shp, color = 'black', fill = NA) + 
+  geom_sf(data = country_shp, fill = NA, lwd = 0) + 
   labs(fill = 'Area Weight',
        x = '',
        y = '') + 
@@ -129,7 +130,7 @@ Crop weights are the fraction of the crops within the polygon occurring within a
 # Normalized by polygon so all polygons should sum to 1
 map_crop_weights <- ggplot() + 
   geom_raster(data = out_1, aes(x=x, y=y, fill=weight)) +
-  geom_sf(data = country_shp, color = 'black', fill = NA) + 
+  geom_sf(data = country_shp, fill = NA, lwd = 0) +  
   labs(fill = 'Crop Weight',
        x = '',
        y = '') + 
@@ -141,6 +142,20 @@ sum_crop_weights <- out_1 %>%
   group_by(poly_id) %>% 
   mutate(sum_weight= sum(weight)) %>% 
   ungroup() # All = 1
+
+## save area and crop weights
+weight_fig <- plot_grid(
+  map_area_weights,
+  map_crop_weights,
+  align = "v",
+  ncol = 1)
+
+ggsave(weight_fig,
+       filename = file.path(paste0(save_path, 'weights_fig.pdf')),
+       dpi = 300,
+       device = 'pdf')
+
+
 ```
 
 ```{r message=F, warning=F, echo=F}
@@ -175,8 +190,7 @@ out_2_crop_temp2 <- out_2_crop_temp %>%
                                    month == 'month_02' & year %in% leap_years ~ 29,
                                    month == 'month_02' & !year %in% leap_years ~ 28, 
                                    TRUE ~ 31)) %>% 
-  mutate(order_1_avg = order_1 / days_in_month,
-         order_1_avg_hr = order_1_avg / 24)
+  mutate(order_1_avg = order_1 / days_in_month)
 
 # Check leap years
 feb <- out_2_crop_temp2 %>% 
@@ -184,7 +198,7 @@ feb <- out_2_crop_temp2 %>%
 
 leap_plot <- ggplot() + 
   # geom_line(data = feb, aes(x = year, y = order_1, color = as.factor(poly_id), group = poly_id)) + 
-  geom_line(data = feb, aes(x = year, y = order_1_avg_hr, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = feb, aes(x = year, y = order_1_avg, color = as.factor(poly_id), group = poly_id)) + 
   geom_vline(xintercept = 2016,
              linetype = 'longdash') + 
   scale_x_continuous(expand = c(0,0),
@@ -197,7 +211,7 @@ leap_plot <- ggplot() +
 ## Graphs 
 # Polynomial values over time by polygon (one graph for each polynomial order)
 poly1_plot <- ggplot() + 
-  geom_line(data = out_2_crop_temp2, aes(x = month, y = order_1_avg_hr, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = out_2_crop_temp2, aes(x = month, y = order_1_avg, color = as.factor(poly_id), group = poly_id)) + 
   facet_wrap(~year) + 
   scale_x_discrete(expand = c(0,0),
                    breaks = c('month_01', 'month_03', 'month_05',
@@ -208,11 +222,11 @@ poly1_plot <- ggplot() +
                      limits = c(-10,40),
                      breaks = seq(-10,40,10)) +
   labs(x = 'Month',
-       y = 'Averarge Monthly Temp by Polygon\n(First Order / Days in Month / 24hrs)') + 
+       y = 'Averarge Monthly Temp by Polygon\n(First Order / Days in Month)') + 
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly1_plot, filename = paste0(save_path, 'poly1_temp.pdf'))
+ggsave(poly1_plot, filename = paste0(save_path, 'temp/poly1_temp.pdf'))
 
 poly2_plot <- ggplot() + 
   geom_line(data = out_2_crop_temp2, aes(x = month, y = order_2, color = as.factor(poly_id), group = poly_id)) + 
@@ -228,7 +242,7 @@ poly2_plot <- ggplot() +
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly2_plot, filename = paste0(save_path, 'poly2_temp.pdf'))
+ggsave(poly2_plot, filename = paste0(save_path, 'temp/poly2_temp.pdf'))
 
 
 poly3_plot <- ggplot() + 
@@ -246,7 +260,7 @@ poly3_plot <- ggplot() +
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly3_plot, filename = paste0(save_path, 'poly3_temp.pdf'))
+ggsave(poly3_plot, filename = paste0(save_path, 'temp/poly3_temp.pdf'))
 
 
 ## Maps 
@@ -261,64 +275,72 @@ out_3 <- out_2_crop_temp2 %>%
 out3_sf <- merge(country_areas, out_3, all = TRUE)
 
 # Map first order values by region for low temp month
-map_order1_feb <- out3_sf %>% 
-  filter(month == 'month_02') %>% 
+low_temp_df <- out3_sf %>%
+  filter(month == 'month_02')
+
+map_order1_feb <- low_temp_df %>% 
   ggplot() + 
-  geom_sf(aes(fill = order_1_avg_hr), lwd = 0) + 
-  labs(fill = 'Avg Feb\nTemperature\n(1st Order)',
-       title = 'crop weights',
+  geom_sf(aes(fill = order_1_avg), lwd = 0) + 
+  labs(fill = 'Avg Feb\nTemperature\n(1st Order / Days in Month)',
+       title = 'area + crop weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c(limits = c(-12, 45)) + 
+  scale_fill_viridis_c(limits = c(round(min(low_temp_df$order_1_avg)), max(low_temp_df$order_1_avg))) + 
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_order1_feb, filename = paste0(save_path, 'low_temp_out.pdf'))
+ggsave(map_order1_feb, filename = paste0(save_path, 'temp/low_temp_out.pdf'))
 
 # Map first order values for high temp month (July)
-map_order1_jul <- out3_sf %>% 
-  filter(month == 'month_07') %>% 
+high_temp_df <-  out3_sf %>%
+  filter(month == 'month_07')
+
+map_order1_jul <- high_temp_df %>%
   ggplot() + 
-  geom_sf(aes(fill = order_1_avg_hr), lwd = 0) + 
-  labs(fill = 'Avg July\nTemperature\n(1st Order)',
-       title = 'crop weights',
+  geom_sf(aes(fill = order_1_avg), lwd = 0) + 
+  labs(fill = 'Avg July\nTemperature\n(1st Order / Days in Month)',
+       title = 'area + crop weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c(limits = c(-12, 45)) + 
+  scale_fill_viridis_c(limits = c(round(min(high_temp_df$order_1_avg)), max(high_temp_df$order_1_avg))) + 
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_order1_jul, filename = paste0(save_path, 'high_temp_out.pdf'))
+ggsave(map_order1_jul, filename = paste0(save_path, 'temp/high_temp_out.pdf'))
 
 ## map first order for three consecutive months (march, april, may)
-map_order1_spring <- out3_sf %>% 
-  filter(month %in% c('month_03', 'month_04', 'month_05')) %>% 
+spring_df <-  out3_sf %>%
+  filter(month %in% c('month_03', 'month_04', 'month_05')) 
+
+map_order1_spring <- spring_df %>%
   ggplot() + 
-  geom_sf(aes(fill = order_1_avg_hr), lwd = 0) + 
-  labs(fill = 'Avg spring\nTemperature\n(1st Order)',
-       title = 'crop weights',
+  geom_sf(aes(fill = order_1_avg), lwd = 0) + 
+  labs(fill = 'Avg spring\nTemperature\n(1st Order / Days in Month)',
+       title = 'area + crop weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c(limits = c(-12, 45)) + 
+  scale_fill_viridis_c(limits = c(round(min(spring_df$order_1_avg)), max(spring_df$order_1_avg))) + 
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_spring, filename = paste0(save_path, 'spring_temp_out.pdf'))
+ggsave(map_order1_spring, filename = paste0(save_path, 'temp/spring_temp_out.pdf'))
 
 ## map first order for three consecutive months (sept, oct, nov)
-map_order1_fall <- out3_sf %>% 
-  filter(month %in% c('month_09', 'month_10', 'month_11')) %>% 
+fall_temp_df <- out3_sf %>% 
+  filter(month %in% c('month_09', 'month_10', 'month_11'))
+
+map_order1_fall <- fall_temp_df %>%
   ggplot() + 
-  geom_sf(aes(fill = order_1_avg_hr), lwd = 0) + 
-  labs(fill = 'Avg fall\nTemperature\n(1st Order)',
-       title = 'crop weights',
+  geom_sf(aes(fill = order_1_avg), lwd = 0) + 
+  labs(fill = 'Avg fall\nTemperature\n(1st Order / Days in Month)',
+       title = 'area + crop weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c(limits = c(-12, 45)) + 
+  scale_fill_viridis_c(limits = c(round(min(fall_temp_df$order_1_avg)), max(fall_temp_df$order_1_avg))) +  
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_fall, filename = paste0(save_path, 'fall_temp_out.pdf'))
+ggsave(map_order1_fall, filename = paste0(save_path, 'temp/fall_temp_out.pdf'))
 
 # ## Maps for output with crop weights 
 # # Convert the first order to avg temp by month so it's easier to understand the values 
@@ -391,69 +413,77 @@ check_out2 <- out_2_crop_prcp %>%
 out2_prcp_sf <- merge(country_areas, out_2_crop_prcp, all = TRUE)
 
 # Map first order values by area for lowest precip month (december) 
-map_prcp_low <- out2_prcp_sf %>% 
-  filter(month == 'month_12') %>% 
+low_prcp <- out2_prcp_sf %>% 
+  filter(month == 'month_12')
+
+map_prcp_low <- low_prcp %>% 
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
-  labs(fill = 'Total December\nPrecipitation (m)\n(1st Order)',
-       title = 'crop weights',
+  labs(fill = 'Total December\nPrecipitation (mm)\n(1st Order)',
+       title = 'area + crop weights',
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(0, 1)) + 
+                       limits = c(round(min(low_prcp$order_1)), max(low_prcp$order_1))) + 
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_prcp_low, filename = paste0(save_path, 'low_prcp_out.pdf'))
+ggsave(map_prcp_low, filename = paste0(save_path, 'prcp/low_prcp_out.pdf'))
 
 
 # Map first order values for highest precip month (June)
-map_prcp_high <- out2_prcp_sf %>% 
-  filter(month == 'month_06') %>% 
+high_prcp <- out2_prcp_sf %>% 
+  filter(month == 'month_06')
+
+map_prcp_high <- high_prcp %>% 
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
-  labs(fill = 'Total June\nPrecipitation (m)\n(1st Order)',
-       title = 'crop weights',
+  labs(fill = 'Total June\nPrecipitation (mm)\n(1st Order)',
+       title = 'area + crop weights',
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(0, 1)) + 
+                       limits = c(round(min(high_prcp$order_1)), max(high_prcp$order_1))) + 
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_prcp_high, filename = paste0(save_path, 'high_prcp_out.pdf'))
+ggsave(map_prcp_high, filename = paste0(save_path, 'prcp/high_prcp_out.pdf'))
 
 ## map first order for three consecutive wet months (june, july, aug)
-map_order1_wet <- out2_prcp_sf %>% 
-  filter(month %in% c('month_06', 'month_07', 'month_08')) %>% 
+wet_months <- out2_prcp_sf %>% 
+  filter(month %in% c('month_06', 'month_07', 'month_08'))
+
+map_order1_wet <- wet_months %>% 
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
-  labs(fill = 'Monthly Precipitation (m)\nWet Season\n(1st Order)',
-       title = 'crop weights',
+  labs(fill = 'Monthly Precipitation (mm)\nWet Season\n(1st Order)',
+       title = 'area + crop weights',
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(0, 1)) +  
+                       limits = c(round(min(wet_months$order_1)), max(wet_months$order_1))) +  
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_wet, filename = paste0(save_path, 'wet_season_out.pdf'))
+ggsave(map_order1_wet, filename = paste0(save_path, 'prcp/wet_season_out.pdf'))
 
 ## map first order for three consecutive months (nov, dec, jan)
-map_order1_dry <- out2_prcp_sf %>% 
-  filter(month %in% c('month_11', 'month_12', 'month_01')) %>% 
+dry_months <- out2_prcp_sf %>% 
+  filter(month %in% c('month_11', 'month_12', 'month_01'))
+
+map_order1_dry <- dry_months %>% 
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
-  labs(fill = 'Total Precipitation (m)\nDry Season\n(1st Order)',
-       title = 'crop weights',
+  labs(fill = 'Total Precipitation (mm)\nDry Season\n(1st Order)',
+       title = 'area + crop weights',
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(0, 1)) +  
+                       limits = c(round(min(dry_months$order_1)), max(dry_months$order_1))) +  
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_dry, filename = paste0(save_path, 'dry_season_out.pdf'))
+ggsave(map_order1_dry, filename = paste0(save_path, 'prcp/dry_season_out.pdf'))
 
 ## plot first, second, third order
 
@@ -466,14 +496,13 @@ poly1_plot_p <- ggplot() +
                               'month_07', 'month_09', 'month_11'),
                    labels = c('Jan', 'Mar', 'May', 'Jul',
                               'Sept', 'Nov')) +
-  scale_y_continuous(expand = c(0,0),
-                     limits = c(0, 1)) +
+  scale_y_continuous(expand = c(0,0)) +
   labs(x = 'Month',
-       y = 'Total Monthly Prcp by Polygon (m)\n(First Order)') + 
+       y = 'Total Monthly Prcp by Polygon (mm)\n(First Order)') + 
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly1_plot_p, filename = paste0(save_path, 'poly1_prcp.pdf'))
+ggsave(poly1_plot_p, filename = paste0(save_path, 'prcp/poly1_prcp.pdf'))
 
 # Polynomial values over time by polygon (one graph for each polynomial order)
 poly2_plot_p <- ggplot() + 
@@ -484,14 +513,13 @@ poly2_plot_p <- ggplot() +
                               'month_07', 'month_09', 'month_11'),
                    labels = c('Jan', 'Mar', 'May', 'Jul',
                               'Sept', 'Nov')) +
-  scale_y_continuous(expand = c(0,0),
-                     limits = c(0, 0.1)) +
+  scale_y_continuous(expand = c(0,0)) +
   labs(x = 'Month',
        y = 'Total Monthly Prcp by Polygon\n(Second Order)') + 
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly2_plot_p, filename = paste0(save_path, 'poly2_prcp.pdf'))
+ggsave(poly2_plot_p, filename = paste0(save_path, 'prcp/poly2_prcp.pdf'))
 
 poly3_plot_p <- ggplot() + 
   geom_line(data = out_2_crop_prcp, aes(x = month, y = order_3, color = as.factor(poly_id), group = poly_id)) + 
@@ -501,14 +529,13 @@ poly3_plot_p <- ggplot() +
                               'month_07', 'month_09', 'month_11'),
                    labels = c('Jan', 'Mar', 'May', 'Jul',
                               'Sept', 'Nov')) +
-  scale_y_continuous(expand = c(0,0),
-                     limits = c(0, 0.03)) +
+  scale_y_continuous(expand = c(0,0)) +
   labs(x = 'Month',
-       y = 'Total Monthly Prcp by Polygon\n(Second Order)') + 
+       y = 'Total Monthly Prcp by Polygon\n(Third Order)') + 
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly3_plot_p, filename = paste0(save_path, 'poly3_prcp.pdf'))
+ggsave(poly3_plot_p, filename = paste0(save_path, 'prcp/poly3_prcp.pdf'))
 
 
 
