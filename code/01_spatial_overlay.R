@@ -113,17 +113,6 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
       
     }
     
-    # Warning if weights don't overlap fully with polygons 
-    weights_ext <- extent(weights_xmin, weights_xmax, weights_ymin, weights_ymax)
-    poly_ext <- extent(input_polygons)
-    
-    if(poly_ext@xmin < weights_ext@xmin | poly_ext@xmax > weights_ext@xmax |
-       poly_ext@ymin < weights_ext@ymin | poly_ext@ymax > weights_ext@ymax) {
-      
-      warning(crayon::red("Warning: some of your polygons fall outside of the input weights data layer, meaning weights cannot be calculated and area-weights will be returned"))
-      
-    }
-    
     # Set key column in the merged dt table
     keycols = c("x", "y")
     setkeyv(area_weight, keycols)
@@ -157,6 +146,13 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
       dplyr::filter(is.na(weight)) %>% 
       dplyr::select(poly_id) %>% 
       distinct()
+    
+    # Warning if there are polygons with NA weight values
+    if(nrow(na_polys > 0)) {
+      
+      warning(crayon::red("Warning: some of the secondary weights are NA, meaning weights cannot be calculated and area-weights will be returned"))
+      
+    }
     
     # Update the weight to equal w_area for all grid cells in na_polys 
     w_merged[, weight := data.table::fifelse(poly_id %in% c(na_polys$poly_id, zero_polys$poly_id), w_area, weight)]
