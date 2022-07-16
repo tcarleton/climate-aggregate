@@ -15,21 +15,21 @@ source(here::here('code', '02_agg_climate_data.R'))
 # # Testing with CA counties
 # input_polygons <- read_sf(file.path(root_dir, "data", "shapefiles", "tl_2019_us_county", "tl_2019_us_county.shp")) %>% dplyr::filter(STATEFP == '06')
 
-input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "USA", "tl_2016_us_county_mortality.shp"))
+input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "MEX", "boundaries_4795_IPUMS_MX_HSLAD_1990_2015.shp"))
 
 ## Inputs - update as necessary 
 # Defined - must match one of the options
 climate_data <- 'era5' # era5 is only option for now
 climate_variable <- 'temp' # temp, prcp, or uv
 daily_agg <- 'average' # average or sum; method for aggregating from hourly to daily: use average for temp, sum for prcp
-years <- 1968:2004 # any sequence of years 1967:2020
+years <- 1990:2018 # any sequence of years 1967:2020
 trans <- 'polynomial' # polynomial is only option for now
 trans_specs <- 5 # Specs must match the trans type, numeric when trans=polynomial (5 for temp, 3 for prcp)
 id_var <- 'GEOID' # Col name in the input_polygons shp that uniquely identifies each polygon 
 weights <- TRUE # True to define a second set of weights, FALSE to use only area weights
 
 # Flexible - not limited to specific options
-input_polygons_name <- 'usa_area' # Name used in saving function outputs; should relate to the polygons used
+input_polygons_name <- 'mex_area' # Name used in saving function outputs; should relate to the polygons used
 weights_type <- 'crop' # Added to the name of the output file to indicate what secondary weights are used 
 weights_name <- 'era5_cropland_2003_full' # The name of the secondary weights file, cannot be blank if weights = TRUE
 
