@@ -29,7 +29,7 @@ id_var <- 'GEOID' # Col name in the input_polygons shp that uniquely identifies 
 weights <- TRUE # True to define a second set of weights, FALSE to use only area weights
 
 # Flexible - not limited to specific options
-input_polygons_name <- 'usa_county' # Name used in saving function outputs; should relate to the polygons used
+input_polygons_name <- 'usa_area' # Name used in saving function outputs; should relate to the polygons used
 weights_type <- 'crop' # Added to the name of the output file to indicate what secondary weights are used 
 weights_name <- 'era5_cropland_2003_full' # The name of the secondary weights file, cannot be blank if weights = TRUE
 
