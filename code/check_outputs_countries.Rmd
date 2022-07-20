@@ -14,18 +14,56 @@ library(cowplot)
 ## add paths
 main_path <- '/Volumes/GoogleDrive/Shared Drives/emlab/projects/current-projects/climate-data-pipeline/'
 
-save_path <- paste0(main_path, 'agg-outputs/diagnostic-figs/JPN/')
+save_path <- paste0(main_path, 'agg-outputs/diagnostic-figs/')
 
 output_path <- paste0(main_path, 'agg-outputs/')
 
 ## files
-weight_file  <- 'weights/jpn_prefecture_era5_area_crop_weights.csv'
+weight_file  <- 'weights/ecu_province_era5_area_crop_weights.csv'
 
-temp_file <- 'output/jpn_prefecture_era5_temp_average_2009_2018_polynomial_5_area_crop_weights.csv'
+temp_file <- 'output/ecu_province_era5_temp_average_1990_2018_polynomial_5_area_crop_weights.csv'
 
-prcp_file <- 'output/jpn_prefecture_era5_prcp_sum_2009_2018_polynomial_3_area_crop_weights.csv'
+prcp_file <- 'output/ecu_province_era5_prcp_sum_1990_2018_polynomial_3_area_crop_weights.csv'
 
-polygon_file <- 'shapefiles/JPN/JPN_adm1.shp'
+polygon_file <- 'shapefiles/ECU/gadm36_ECU_1.shp'
+
+
+## Information for saving/filtering
+## ----------------------------------------------
+
+country_name <- "ECU"
+low_temp_month <- 'month_09'
+high_temp_month <- 'month_06'
+spring_months <- c('month_11', 'month_12', 'month_01')
+fall_months <- c('month_06', 'month_07', 'month_08')
+low_prcp_m <- 'month_06'
+dry_months <- c('month_06', 'month_07', 'month_08')
+high_prcp_m <- 'month_04'
+wet_months <- c('month_03', 'month_04', 'month_05')
+plot_yrs <- seq(1990, 2018, by = 5)
+
+
+
+
+## Create folders as needed
+  if(!dir.exists(paste0(save_path, country_name))){
+
+    dir.create(paste0(save_path, country_name), recursive=T)
+
+  }
+
+if(!dir.exists(paste0(save_path, country_name, '/temp'))){
+
+    dir.create(paste0(save_path, country_name, '/temp'), recursive=T)
+
+}
+
+if(!dir.exists(paste0(save_path, country_name, '/prcp'))){
+
+    dir.create(paste0(save_path, country_name, '/prcp'), recursive=T)
+
+  }
+
 
 # Step 1 output - weights
 
@@ -80,13 +118,13 @@ Step 1 output is the overlap between polygons for Japan and the climate rasters.
 ```{r check-area-weights}
 check_id_counts <- out_1 %>% 
   select(poly_id) %>% 
-  distinct() #47 - good 
+  distinct() 
 
 # Map by polygon color 
 map_polys <- ggplot() + 
   geom_raster(data = out_1, aes(x=x, y=y, fill=poly_id),
               alpha = 0.8) +
-  geom_sf(data = country_shp, color = 'black', fill = NA) + 
+  # geom_sf(data = country_shp, color = 'black', fill = NA) +
   labs(x = '',
        y = '') + 
   theme_bw() + 
@@ -100,13 +138,16 @@ xy_ids <- out_1 %>%
 # Map area weights 
 # Area weight = fraction of the cell covered by the polygon * area km 2
 # Normalized by polygon so all polygons should sum to 1
-map_area_weights <- ggplot() + 
-  geom_raster(data = out_1, aes(x=x, y=y, fill=w_area)) +
-  geom_sf(data = country_shp, fill = NA, lwd = 0) + 
+map_area_weights <- country_shp %>%
+  st_shift_longitude() %>%
+  ggplot() + 
+  geom_sf(fill = NA, lwd = 0) +
+  geom_tile(data = out_1, aes(x=x, y=y, fill=w_area)) +
   labs(fill = 'Area Weight',
        x = '',
        y = '') + 
   scale_fill_viridis_c() + 
+  # scale_x_continuous(limits = c(165, 184)) +
   theme_bw() 
 
 # Check sum weights
@@ -128,13 +169,16 @@ Crop weights are the fraction of the crops within the polygon occurring within a
 # Map crop weights 
 # crop weight = fraction of the cell covered by the polygon * crop weight
 # Normalized by polygon so all polygons should sum to 1
-map_crop_weights <- ggplot() + 
-  geom_raster(data = out_1, aes(x=x, y=y, fill=weight)) +
-  geom_sf(data = country_shp, fill = NA, lwd = 0) +  
-  labs(fill = 'Crop Weight',
+map_crop_weights <- country_shp %>%
+  st_shift_longitude() %>%
+  ggplot() + 
+  geom_sf(fill = NA, lwd = 0) +
+  geom_tile(data = out_1, aes(x=x, y=y, fill=weight)) +
+  labs(fill = 'Area + Crop Weight',
        x = '',
        y = '') + 
   scale_fill_viridis_c() + 
+  # scale_x_continuous(limits = c(165, 184)) +
   theme_bw() 
 
 # Check sum weights
@@ -151,7 +195,7 @@ weight_fig <- plot_grid(
   ncol = 1)
 
 ggsave(weight_fig,
-       filename = file.path(paste0(save_path, 'weights_fig.pdf')),
+       filename = file.path(paste0(save_path, "/", country_name, '/weights_fig.pdf')),
        dpi = 300,
        device = 'pdf')
 
@@ -202,7 +246,7 @@ leap_plot <- ggplot() +
   geom_vline(xintercept = 2016,
              linetype = 'longdash') + 
   scale_x_continuous(expand = c(0,0),
-                   breaks = seq(2009, 2018, by=1)) + 
+                   breaks = seq(min(feb$year), max(feb$year), by=1)) + 
   labs(x = 'Year',
        y = 'Avg February Temperatures') + 
   theme_bw() + 
@@ -226,7 +270,7 @@ poly1_plot <- ggplot() +
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly1_plot, filename = paste0(save_path, 'temp/poly1_temp.pdf'))
+ggsave(poly1_plot, filename = paste0(save_path, country_name, '/temp/poly1_temp.pdf'))
 
 poly2_plot <- ggplot() + 
   geom_line(data = out_2_crop_temp2, aes(x = month, y = order_2, color = as.factor(poly_id), group = poly_id)) + 
@@ -242,7 +286,7 @@ poly2_plot <- ggplot() +
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly2_plot, filename = paste0(save_path, 'temp/poly2_temp.pdf'))
+ggsave(poly2_plot, filename = paste0(save_path, country_name, '/temp/poly2_temp.pdf'))
 
 
 poly3_plot <- ggplot() + 
@@ -260,7 +304,7 @@ poly3_plot <- ggplot() +
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly3_plot, filename = paste0(save_path, 'temp/poly3_temp.pdf'))
+ggsave(poly3_plot, filename = paste0(save_path, country_name, '/temp/poly3_temp.pdf'))
 
 
 ## Maps 
@@ -269,6 +313,20 @@ country_areas <- country_shp %>%
   mutate(poly_id = NAME_1) %>% 
   select(poly_id)
 
+# country_check <- country_areas %>%
+#   st_shift_longitude() %>%
+#   ggplot() +
+#   geom_sf(aes(), fill = "navy", lwd = 0) +
+#   labs(x = '',
+#        y = '') +
+#   theme_bw()
+# 
+# ggsave(country_check, filename = paste0(save_path, country_name, '/country.pdf'))
+
+
+
+
+
 out_3 <- out_2_crop_temp2 %>% 
   filter(!is.na(month))
 
@@ -276,71 +334,79 @@ out3_sf <- merge(country_areas, out_3, all = TRUE)
 
 # Map first order values by region for low temp month
 low_temp_df <- out3_sf %>%
-  filter(month == 'month_02')
+  filter(month == low_temp_month)
 
-map_order1_feb <- low_temp_df %>% 
+map_order1_lowt <- low_temp_df %>% 
+  st_shift_longitude() %>%
+  filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1_avg), lwd = 0) + 
-  labs(fill = 'Avg Feb\nTemperature\n(1st Order / Days in Month)',
+  labs(fill = paste0('Avg ', low_temp_month, '\nTemperature\n(1st Order / Days in Month)'),
        title = 'area + crop weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c(limits = c(round(min(low_temp_df$order_1_avg)), max(low_temp_df$order_1_avg))) + 
+  scale_fill_viridis_c(limits = c(round(min(low_temp_df$order_1_avg)) - 1, round(max(low_temp_df$order_1_avg)) + 1)) + 
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_order1_feb, filename = paste0(save_path, 'temp/low_temp_out.pdf'))
+ggsave(map_order1_lowt, filename = paste0(save_path, country_name, '/temp/low_temp_out.pdf'))
 
 # Map first order values for high temp month (July)
 high_temp_df <-  out3_sf %>%
-  filter(month == 'month_07')
+  filter(month == high_temp_month)
 
-map_order1_jul <- high_temp_df %>%
+map_order1_hight <- high_temp_df %>%
+  st_shift_longitude() %>%
+  filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1_avg), lwd = 0) + 
-  labs(fill = 'Avg July\nTemperature\n(1st Order / Days in Month)',
+  labs(fill = paste0('Avg ', high_temp_month, '\nTemperature\n(1st Order / Days in Month)'),
        title = 'area + crop weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c(limits = c(round(min(high_temp_df$order_1_avg)), max(high_temp_df$order_1_avg))) + 
+  scale_fill_viridis_c(limits = c(round(min(high_temp_df$order_1_avg)) - 1, round(max(high_temp_df$order_1_avg)) + 1)) + 
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_order1_jul, filename = paste0(save_path, 'temp/high_temp_out.pdf'))
+ggsave(map_order1_hight, filename = paste0(save_path, country_name, '/temp/high_temp_out.pdf'))
 
-## map first order for three consecutive months (march, april, may)
+## map first order for three consecutive months 
 spring_df <-  out3_sf %>%
-  filter(month %in% c('month_03', 'month_04', 'month_05')) 
+  filter(month %in% spring_months) 
 
 map_order1_spring <- spring_df %>%
+  st_shift_longitude() %>%
+  filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1_avg), lwd = 0) + 
   labs(fill = 'Avg spring\nTemperature\n(1st Order / Days in Month)',
        title = 'area + crop weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c(limits = c(round(min(spring_df$order_1_avg)), max(spring_df$order_1_avg))) + 
+  scale_fill_viridis_c(limits = c(round(min(spring_df$order_1_avg)) - 1, round(max(spring_df$order_1_avg)) + 1)) + 
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_spring, filename = paste0(save_path, 'temp/spring_temp_out.pdf'))
+ggsave(map_order1_spring, filename = paste0(save_path, country_name, '/temp/spring_temp_out.pdf'))
 
 ## map first order for three consecutive months (sept, oct, nov)
 fall_temp_df <- out3_sf %>% 
-  filter(month %in% c('month_09', 'month_10', 'month_11'))
+  filter(month %in% fall_months)
 
 map_order1_fall <- fall_temp_df %>%
+  st_shift_longitude() %>%
+  filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1_avg), lwd = 0) + 
   labs(fill = 'Avg fall\nTemperature\n(1st Order / Days in Month)',
        title = 'area + crop weights',
        x = '',
        y = '') + 
-  scale_fill_viridis_c(limits = c(round(min(fall_temp_df$order_1_avg)), max(fall_temp_df$order_1_avg))) +  
+  scale_fill_viridis_c(limits = c(round(min(fall_temp_df$order_1_avg)) - 1, round(max(fall_temp_df$order_1_avg)) + 1)) +  
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_fall, filename = paste0(save_path, 'temp/fall_temp_out.pdf'))
+ggsave(map_order1_fall, filename = paste0(save_path, country_name, '/temp/fall_temp_out.pdf'))
 
 # ## Maps for output with crop weights 
 # # Convert the first order to avg temp by month so it's easier to understand the values 
@@ -414,46 +480,52 @@ out2_prcp_sf <- merge(country_areas, out_2_crop_prcp, all = TRUE)
 
 # Map first order values by area for lowest precip month (december) 
 low_prcp <- out2_prcp_sf %>% 
-  filter(month == 'month_12')
+  filter(month == low_prcp_m)
 
 map_prcp_low <- low_prcp %>% 
+  st_shift_longitude() %>%
+  filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
-  labs(fill = 'Total December\nPrecipitation (mm)\n(1st Order)',
+  labs(fill = paste0('Total ', low_prcp_m, '\nPrecipitation (mm)\n(1st Order)'),
        title = 'area + crop weights',
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(round(min(low_prcp$order_1)), max(low_prcp$order_1))) + 
+                       limits = c(round(min(low_prcp$order_1)) - 1, round(max(low_prcp$order_1)) + 1)) + 
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_prcp_low, filename = paste0(save_path, 'prcp/low_prcp_out.pdf'))
+ggsave(map_prcp_low, filename = paste0(save_path, country_name, '/prcp/low_prcp_out.pdf'))
 
 
 # Map first order values for highest precip month (June)
 high_prcp <- out2_prcp_sf %>% 
-  filter(month == 'month_06')
+  filter(month == high_prcp_m)
 
 map_prcp_high <- high_prcp %>% 
+  st_shift_longitude() %>%
+  filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
-  labs(fill = 'Total June\nPrecipitation (mm)\n(1st Order)',
+  labs(fill = 'Total ', high_prcp_m, '\nPrecipitation (mm)\n(1st Order)',
        title = 'area + crop weights',
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(round(min(high_prcp$order_1)), max(high_prcp$order_1))) + 
+                       limits = c(round(min(high_prcp$order_1)) - 1, round(max(high_prcp$order_1)) + 1)) + 
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_prcp_high, filename = paste0(save_path, 'prcp/high_prcp_out.pdf'))
+ggsave(map_prcp_high, filename = paste0(save_path, country_name, '/prcp/high_prcp_out.pdf'))
 
-## map first order for three consecutive wet months (june, july, aug)
+## map first order for three consecutive wet months 
 wet_months <- out2_prcp_sf %>% 
-  filter(month %in% c('month_06', 'month_07', 'month_08'))
+  filter(month %in% wet_months)
 
 map_order1_wet <- wet_months %>% 
+  st_shift_longitude() %>%
+  filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
   labs(fill = 'Monthly Precipitation (mm)\nWet Season\n(1st Order)',
@@ -461,17 +533,19 @@ map_order1_wet <- wet_months %>%
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(round(min(wet_months$order_1)), max(wet_months$order_1))) +  
+                       limits = c(round(min(wet_months$order_1)) - 1, round(max(wet_months$order_1)) + 1)) +  
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_wet, filename = paste0(save_path, 'prcp/wet_season_out.pdf'))
+ggsave(map_order1_wet, filename = paste0(save_path, country_name, '/prcp/wet_season_out.pdf'))
 
-## map first order for three consecutive months (nov, dec, jan)
+## map first order for three consecutive months 
 dry_months <- out2_prcp_sf %>% 
-  filter(month %in% c('month_11', 'month_12', 'month_01'))
+  filter(month %in% dry_months)
 
 map_order1_dry <- dry_months %>% 
+  st_shift_longitude() %>%
+  filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
   labs(fill = 'Total Precipitation (mm)\nDry Season\n(1st Order)',
@@ -479,11 +553,11 @@ map_order1_dry <- dry_months %>%
        x = '',
        y = '') + 
   scale_fill_viridis_c(option = 'mako', direction = -1,
-                       limits = c(round(min(dry_months$order_1)), max(dry_months$order_1))) +  
+                       limits = c(round(min(dry_months$order_1)) - 1, round(max(dry_months$order_1)) + 1)) +  
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_dry, filename = paste0(save_path, 'prcp/dry_season_out.pdf'))
+ggsave(map_order1_dry, filename = paste0(save_path, country_name, '/prcp/dry_season_out.pdf'))
 
 ## plot first, second, third order
 
@@ -502,7 +576,7 @@ poly1_plot_p <- ggplot() +
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly1_plot_p, filename = paste0(save_path, 'prcp/poly1_prcp.pdf'))
+ggsave(poly1_plot_p, filename = paste0(save_path, country_name, '/prcp/poly1_prcp.pdf'))
 
 # Polynomial values over time by polygon (one graph for each polynomial order)
 poly2_plot_p <- ggplot() + 
@@ -519,7 +593,7 @@ poly2_plot_p <- ggplot() +
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly2_plot_p, filename = paste0(save_path, 'prcp/poly2_prcp.pdf'))
+ggsave(poly2_plot_p, filename = paste0(save_path, country_name, '/prcp/poly2_prcp.pdf'))
 
 poly3_plot_p <- ggplot() + 
   geom_line(data = out_2_crop_prcp, aes(x = month, y = order_3, color = as.factor(poly_id), group = poly_id)) + 
@@ -535,7 +609,7 @@ poly3_plot_p <- ggplot() +
   theme_bw() + 
   theme(legend.position = '')
 
-ggsave(poly3_plot_p, filename = paste0(save_path, 'prcp/poly3_prcp.pdf'))
+ggsave(poly3_plot_p, filename = paste0(save_path, country_name, '/prcp/poly3_prcp.pdf'))
 
 
 
