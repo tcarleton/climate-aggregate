@@ -22,7 +22,7 @@ input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "EU", "NUTS
 climate_data <- 'era5' # era5 is only option for now
 climate_variable <- 'temp' # temp, prcp, or uv
 daily_agg <- 'average' # average or sum; method for aggregating from hourly to daily: use average for temp, sum for prcp
-years <- 1994:1999 # any sequence of years 1967:2020
+years <- 1994:1995 # any sequence of years 1967:2020
 trans <- 'polynomial' # polynomial is only option for now
 trans_specs <- 5 # Specs must match the trans type, numeric when trans=polynomial (5 for temp, 3 for prcp)
 id_var <- 'GEOID' # Col name in the input_polygons shp that uniquely identifies each polygon 
