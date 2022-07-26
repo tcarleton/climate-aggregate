@@ -10,6 +10,7 @@ library(tidyverse)
 # library(tigris)
 library(sf)
 library(cowplot)
+library(rebus)
 
 ## add paths
 main_path <- '/Volumes/GoogleDrive/Shared Drives/emlab/projects/current-projects/climate-data-pipeline/'
@@ -19,19 +20,19 @@ save_path <- paste0(main_path, 'agg-outputs/diagnostic-figs/')
 output_path <- paste0(main_path, 'agg-outputs/')
 
 ## files
-weight_file  <- 'weights/kor_prov_era5_area_crop_weights.csv'
+weight_file  <- 'weights/usa_area_era5_area_crop_weights.csv'
 
-temp_file <- 'output/kor_prov_era5_temp_average_1983_2018_polynomial_5_area_crop_weights.csv'
+temp_file <- 'output/usa_area_era5_temp_average_1968_2004_polynomial_5_area_crop_weights.csv'
 
-prcp_file <- 'output/kor_prov_era5_prcp_sum_1983_2018_polynomial_3_area_crop_weights.csv'
+prcp_file <- 'output/usa_area_era5_prcp_sum_1968_2004_polynomial_3_area_crop_weights.csv'
 
-polygon_file <- 'shapefiles/KOR/gadm36_KOR_1.shp'
+polygon_file <- 'shapefiles/USA/tl_2016_us_county_mortality.shp'
 
 
 ## Information for saving/filtering
 ## ----------------------------------------------
 
-country_name <- "KOR"
+country_name <- "USA"
 low_temp_month <- 'month_01'
 high_temp_month <- 'month_08'
 spring_months <- c('month_03', 'month_04', 'month_05')
@@ -40,7 +41,7 @@ low_prcp_m <- 'month_12'
 dry_months <- c('month_12', 'month_01', 'month_02')
 high_prcp_m <- 'month_07'
 wet_months <- c('month_06', 'month_07', 'month_08')
-plot_yrs <- seq(1986, 2018, by = 5)
+plot_yrs <- seq(1968, 2004, by = 10)
 
 
 
@@ -106,8 +107,15 @@ country_shp <- read_sf(paste0(main_path, polygon_file))
 
 ## for plotting - change the column name as needed
 country_areas <- country_shp %>% 
-  mutate(poly_id = NAME_1) %>% 
+  mutate(poly_id = GEOID) %>% 
   select(poly_id)
+
+if(country_name == "USA") {
+  
+  country_areas <- country_areas %>%
+    mutate(poly_id = str_remove(poly_id, pattern = START %R% '0'))
+  
+}
 
 
 
@@ -131,7 +139,7 @@ nrow(country_shp) == nrow(check_id_counts)
 map_polys <- ggplot() + 
   geom_raster(data = out_1, aes(x=x, y=y, fill=poly_id),
               alpha = 0.8) +
-  geom_sf(data = country_shp, color = 'black', fill = NA) +
+  # geom_sf(data = country_shp, color = 'black', fill = NA) +
   labs(x = '',
        y = '') + 
   theme_bw() + 
@@ -271,7 +279,7 @@ out_2_crop_temp2 <- out_2_crop_temp %>%
 ## Graphs 
 # Polynomial values over time by polygon (one graph for each polynomial order)
 poly1_plot <- ggplot() + 
-  geom_line(data = out_2_crop_temp2, aes(x = month, y = order_1_avg, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = out_2_crop_temp2, aes(x = month, y = order_1_avg, color = as.factor(poly_id), group = poly_id), alpha = 0.3) + 
   facet_wrap(~year) + 
   scale_x_discrete(expand = c(0,0),
                    breaks = c('month_01', 'month_03', 'month_05',
@@ -279,7 +287,7 @@ poly1_plot <- ggplot() +
                    labels = c('Jan', 'Mar', 'May', 'Jul',
                               'Sept', 'Nov')) +
   scale_y_continuous(expand = c(0,0),
-                     limits = c(-10,40),
+                     limits = c(-40,40),
                      breaks = seq(-10,40,10)) +
   labs(x = 'Month',
        y = 'Averarge Monthly Temp by Polygon\n(First Order / Days in Month)') + 
@@ -289,7 +297,7 @@ poly1_plot <- ggplot() +
 ggsave(poly1_plot, filename = paste0(save_path, country_name, '/temp/poly1_temp.pdf'))
 
 poly2_plot <- ggplot() + 
-  geom_line(data = out_2_crop_temp2, aes(x = month, y = order_2, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = out_2_crop_temp2, aes(x = month, y = order_2, color = as.factor(poly_id), group = poly_id), alpha = 0.3) + 
   facet_wrap(~year) + 
   scale_x_discrete(expand = c(0,0),
                    breaks = c('month_01', 'month_03', 'month_05',
@@ -306,7 +314,7 @@ ggsave(poly2_plot, filename = paste0(save_path, country_name, '/temp/poly2_temp.
 
 
 poly3_plot <- ggplot() + 
-  geom_line(data = out_2_crop_temp2, aes(x = month, y = order_3, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = out_2_crop_temp2, aes(x = month, y = order_3, color = as.factor(poly_id), group = poly_id), alpha = 0.3) + 
   facet_wrap(~year) + 
   scale_x_discrete(expand = c(0,0),
                    breaks = c('month_01', 'month_03', 'month_05',
