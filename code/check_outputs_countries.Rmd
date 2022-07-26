@@ -19,28 +19,28 @@ save_path <- paste0(main_path, 'agg-outputs/diagnostic-figs/')
 output_path <- paste0(main_path, 'agg-outputs/')
 
 ## files
-weight_file  <- 'weights/ecu_province_era5_area_crop_weights.csv'
+weight_file  <- 'weights/kor_prov_era5_area_crop_weights.csv'
 
-temp_file <- 'output/ecu_province_era5_temp_average_1990_2018_polynomial_5_area_crop_weights.csv'
+temp_file <- 'output/kor_prov_era5_temp_average_1983_2018_polynomial_5_area_crop_weights.csv'
 
-prcp_file <- 'output/ecu_province_era5_prcp_sum_1990_2018_polynomial_3_area_crop_weights.csv'
+prcp_file <- 'output/kor_prov_era5_prcp_sum_1983_2018_polynomial_3_area_crop_weights.csv'
 
-polygon_file <- 'shapefiles/ECU/gadm36_ECU_1.shp'
+polygon_file <- 'shapefiles/KOR/gadm36_KOR_1.shp'
 
 
 ## Information for saving/filtering
 ## ----------------------------------------------
 
-country_name <- "ECU"
-low_temp_month <- 'month_09'
-high_temp_month <- 'month_06'
-spring_months <- c('month_11', 'month_12', 'month_01')
-fall_months <- c('month_06', 'month_07', 'month_08')
-low_prcp_m <- 'month_06'
-dry_months <- c('month_06', 'month_07', 'month_08')
-high_prcp_m <- 'month_04'
-wet_months <- c('month_03', 'month_04', 'month_05')
-plot_yrs <- seq(1990, 2018, by = 5)
+country_name <- "KOR"
+low_temp_month <- 'month_01'
+high_temp_month <- 'month_08'
+spring_months <- c('month_03', 'month_04', 'month_05')
+fall_months <- c('month_10', 'month_11', 'month_12')
+low_prcp_m <- 'month_12'
+dry_months <- c('month_12', 'month_01', 'month_02')
+high_prcp_m <- 'month_07'
+wet_months <- c('month_06', 'month_07', 'month_08')
+plot_yrs <- seq(1986, 2018, by = 5)
 
 
 
@@ -104,6 +104,11 @@ out_2_crop_prcp <- read_csv(paste0(output_path, prcp_file))
 
 country_shp <- read_sf(paste0(main_path, polygon_file)) 
 
+## for plotting - change the column name as needed
+country_areas <- country_shp %>% 
+  mutate(poly_id = NAME_1) %>% 
+  select(poly_id)
+
 
 
 ```
@@ -120,11 +125,13 @@ check_id_counts <- out_1 %>%
   select(poly_id) %>% 
   distinct() 
 
+nrow(country_shp) == nrow(check_id_counts)
+
 # Map by polygon color 
 map_polys <- ggplot() + 
   geom_raster(data = out_1, aes(x=x, y=y, fill=poly_id),
               alpha = 0.8) +
-  # geom_sf(data = country_shp, color = 'black', fill = NA) +
+  geom_sf(data = country_shp, color = 'black', fill = NA) +
   labs(x = '',
        y = '') + 
   theme_bw() + 
@@ -155,6 +162,9 @@ sum_area_weights <- out_1 %>%
   group_by(poly_id) %>% 
   mutate(sum_w_area = sum(w_area)) %>% 
   ungroup() # All = 1
+
+unique(sum_area_weights$sum_w_area)
+
 ```
 
 ```{r message=F, warning=F, echo=F}
@@ -187,6 +197,8 @@ sum_crop_weights <- out_1 %>%
   mutate(sum_weight= sum(weight)) %>% 
   ungroup() # All = 1
 
+unique(sum_crop_weights$sum_weight)
+
 ## save area and crop weights
 weight_fig <- plot_grid(
   map_area_weights,
@@ -216,9 +228,13 @@ check_out2 <- out_2_crop_temp %>%
   group_by(year, poly_id) %>% 
   summarize(n_months = n()) # all have 12
 
+unique(check_out2$n_months)
+
 # Check for any na values
 check_nas <- out_2_crop_temp %>% 
   filter(is.na(order_1) | is.na(order_2) | is.na(order_3) | is.na(order_4) | is.na(order_5)) # None
+
+nrow(check_nas)
 
 # na_counties <- ca_counties %>% 
 #   filter(GEOID %in% c('06015', '06023', '06025', '06071', '06073')) # San Diego, San Bernardino, Humboldt, Del Norte, Imperial 
@@ -236,21 +252,21 @@ out_2_crop_temp2 <- out_2_crop_temp %>%
                                    TRUE ~ 31)) %>% 
   mutate(order_1_avg = order_1 / days_in_month)
 
-# Check leap years
-feb <- out_2_crop_temp2 %>% 
-  filter(month == 'month_02')
-
-leap_plot <- ggplot() + 
-  # geom_line(data = feb, aes(x = year, y = order_1, color = as.factor(poly_id), group = poly_id)) + 
-  geom_line(data = feb, aes(x = year, y = order_1_avg, color = as.factor(poly_id), group = poly_id)) + 
-  geom_vline(xintercept = 2016,
-             linetype = 'longdash') + 
-  scale_x_continuous(expand = c(0,0),
-                   breaks = seq(min(feb$year), max(feb$year), by=1)) + 
-  labs(x = 'Year',
-       y = 'Avg February Temperatures') + 
-  theme_bw() + 
-  theme(legend.position = '')
+# # Check leap years
+# feb <- out_2_crop_temp2 %>% 
+#   filter(month == 'month_02')
+# 
+# leap_plot <- ggplot() + 
+#   # geom_line(data = feb, aes(x = year, y = order_1, color = as.factor(poly_id), group = poly_id)) + 
+#   geom_line(data = feb, aes(x = year, y = order_1_avg, color = as.factor(poly_id), group = poly_id)) + 
+#   geom_vline(xintercept = 2016,
+#              linetype = 'longdash') + 
+#   scale_x_continuous(expand = c(0,0),
+#                    breaks = seq(min(feb$year), max(feb$year), by=1)) + 
+#   labs(x = 'Year',
+#        y = 'Avg February Temperatures') + 
+#   theme_bw() + 
+#   theme(legend.position = '')
 
 ## Graphs 
 # Polynomial values over time by polygon (one graph for each polynomial order)
@@ -307,11 +323,8 @@ poly3_plot <- ggplot() +
 ggsave(poly3_plot, filename = paste0(save_path, country_name, '/temp/poly3_temp.pdf'))
 
 
-## Maps 
-# Join first order outputs to the shp 
-country_areas <- country_shp %>% 
-  mutate(poly_id = NAME_1) %>% 
-  select(poly_id)
+## maps
+## --------------------------------------------------
 
 # country_check <- country_areas %>%
 #   st_shift_longitude() %>%
@@ -322,9 +335,6 @@ country_areas <- country_shp %>%
 #   theme_bw()
 # 
 # ggsave(country_check, filename = paste0(save_path, country_name, '/country.pdf'))
-
-
-
 
 
 out_3 <- out_2_crop_temp2 %>% 
@@ -463,7 +473,9 @@ map_order1_jul_crop
 # Check that each polygon has a value for all 12 months 
 check_out2 <- out_2_crop_prcp %>% 
   group_by(year, poly_id) %>% 
-  summarize(n_months = n()) # Looks good 
+  summarize(n_months = n()) # Looks good
+
+unique(check_out2$n_months)
 
 # ## convert from summation
 # out_2_crop_prcp2 <- out_2_crop_prcp %>% 
@@ -496,7 +508,10 @@ map_prcp_low <- low_prcp %>%
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_prcp_low, filename = paste0(save_path, country_name, '/prcp/low_prcp_out.pdf'))
+ggsave(map_prcp_low, filename = paste0(save_path, country_name, '/prcp/low_prcp_out.pdf'),
+       width = 8,
+       height = 11,
+       units = 'in')
 
 
 # Map first order values for highest precip month (June)
@@ -517,7 +532,10 @@ map_prcp_high <- high_prcp %>%
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_prcp_high, filename = paste0(save_path, country_name, '/prcp/high_prcp_out.pdf'))
+ggsave(map_prcp_high, filename = paste0(save_path, country_name, '/prcp/high_prcp_out.pdf'),
+       width = 8,
+       height = 11,
+       units = 'in')
 
 ## map first order for three consecutive wet months 
 wet_months <- out2_prcp_sf %>% 
@@ -537,7 +555,10 @@ map_order1_wet <- wet_months %>%
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_wet, filename = paste0(save_path, country_name, '/prcp/wet_season_out.pdf'))
+ggsave(map_order1_wet, filename = paste0(save_path, country_name, '/prcp/wet_season_out.pdf'),
+       width = 8,
+       height = 11,
+       units = 'in')
 
 ## map first order for three consecutive months 
 dry_months <- out2_prcp_sf %>% 
@@ -557,7 +578,10 @@ map_order1_dry <- dry_months %>%
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_dry, filename = paste0(save_path, country_name, '/prcp/dry_season_out.pdf'))
+ggsave(map_order1_dry, filename = paste0(save_path, country_name, '/prcp/dry_season_out.pdf'),
+       width = 8,
+       height = 11,
+       units = 'in')
 
 ## plot first, second, third order
 
