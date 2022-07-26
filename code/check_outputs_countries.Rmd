@@ -367,7 +367,10 @@ map_order1_lowt <- low_temp_df %>%
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_order1_lowt, filename = paste0(save_path, country_name, '/temp/low_temp_out.pdf'))
+ggsave(map_order1_lowt, filename = paste0(save_path, country_name, '/temp/low_temp_out.pdf'),
+       width = 11,
+       height = 10,
+       units = "in")
 
 # Map first order values for high temp month (July)
 high_temp_df <-  out3_sf %>%
@@ -386,7 +389,10 @@ map_order1_hight <- high_temp_df %>%
   facet_wrap(~year) + 
   theme_bw() 
 
-ggsave(map_order1_hight, filename = paste0(save_path, country_name, '/temp/high_temp_out.pdf'))
+ggsave(map_order1_hight, filename = paste0(save_path, country_name, '/temp/high_temp_out.pdf'),
+       width = 11,
+       height = 10,
+       units = "in")
 
 ## map first order for three consecutive months 
 spring_df <-  out3_sf %>%
@@ -405,7 +411,10 @@ map_order1_spring <- spring_df %>%
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_spring, filename = paste0(save_path, country_name, '/temp/spring_temp_out.pdf'))
+ggsave(map_order1_spring, filename = paste0(save_path, country_name, '/temp/spring_temp_out.pdf'),
+       width = 11,
+       height = 10,
+       units = "in")
 
 ## map first order for three consecutive months (sept, oct, nov)
 fall_temp_df <- out3_sf %>% 
@@ -424,7 +433,10 @@ map_order1_fall <- fall_temp_df %>%
   facet_grid(year~month) + 
   theme_bw() 
 
-ggsave(map_order1_fall, filename = paste0(save_path, country_name, '/temp/fall_temp_out.pdf'))
+ggsave(map_order1_fall, filename = paste0(save_path, country_name, '/temp/fall_temp_out.pdf'),
+       width = 11,
+       height = 10,
+       units = "in")
 
 # ## Maps for output with crop weights 
 # # Convert the first order to avg temp by month so it's easier to understand the values 
@@ -517,9 +529,9 @@ map_prcp_low <- low_prcp %>%
   theme_bw() 
 
 ggsave(map_prcp_low, filename = paste0(save_path, country_name, '/prcp/low_prcp_out.pdf'),
-       width = 8,
-       height = 11,
-       units = 'in')
+       width = 11,
+       height = 10,
+       units = "in")
 
 
 # Map first order values for highest precip month (June)
@@ -541,9 +553,9 @@ map_prcp_high <- high_prcp %>%
   theme_bw() 
 
 ggsave(map_prcp_high, filename = paste0(save_path, country_name, '/prcp/high_prcp_out.pdf'),
-       width = 8,
-       height = 11,
-       units = 'in')
+       width = 11,
+       height = 10,
+       units = "in")
 
 ## map first order for three consecutive wet months 
 wet_months <- out2_prcp_sf %>% 
@@ -564,9 +576,9 @@ map_order1_wet <- wet_months %>%
   theme_bw() 
 
 ggsave(map_order1_wet, filename = paste0(save_path, country_name, '/prcp/wet_season_out.pdf'),
-       width = 8,
-       height = 11,
-       units = 'in')
+       width = 11,
+       height = 10,
+       units = "in")
 
 ## map first order for three consecutive months 
 dry_months <- out2_prcp_sf %>% 
@@ -587,15 +599,15 @@ map_order1_dry <- dry_months %>%
   theme_bw() 
 
 ggsave(map_order1_dry, filename = paste0(save_path, country_name, '/prcp/dry_season_out.pdf'),
-       width = 8,
-       height = 11,
-       units = 'in')
+       width = 11,
+       height = 10,
+       units = "in")
 
 ## plot first, second, third order
 
 # Polynomial values over time by polygon (one graph for each polynomial order)
 poly1_plot_p <- ggplot() + 
-  geom_line(data = out_2_crop_prcp, aes(x = month, y = order_1, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = out_2_crop_prcp, aes(x = month, y = order_1, color = as.factor(poly_id), group = poly_id), alpha = 0.3) + 
   facet_wrap(~year) + 
   scale_x_discrete(expand = c(0,0),
                    breaks = c('month_01', 'month_03', 'month_05',
@@ -612,7 +624,7 @@ ggsave(poly1_plot_p, filename = paste0(save_path, country_name, '/prcp/poly1_prc
 
 # Polynomial values over time by polygon (one graph for each polynomial order)
 poly2_plot_p <- ggplot() + 
-  geom_line(data = out_2_crop_prcp, aes(x = month, y = order_2, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = out_2_crop_prcp, aes(x = month, y = order_2, color = as.factor(poly_id), group = poly_id), alpha = 0.3) + 
   facet_wrap(~year) + 
   scale_x_discrete(expand = c(0,0),
                    breaks = c('month_01', 'month_03', 'month_05',
@@ -628,7 +640,7 @@ poly2_plot_p <- ggplot() +
 ggsave(poly2_plot_p, filename = paste0(save_path, country_name, '/prcp/poly2_prcp.pdf'))
 
 poly3_plot_p <- ggplot() + 
-  geom_line(data = out_2_crop_prcp, aes(x = month, y = order_3, color = as.factor(poly_id), group = poly_id)) + 
+  geom_line(data = out_2_crop_prcp, aes(x = month, y = order_3, color = as.factor(poly_id), group = poly_id), alpha = 0.3) + 
   facet_wrap(~year) + 
   scale_x_discrete(expand = c(0,0),
                    breaks = c('month_01', 'month_03', 'month_05',
