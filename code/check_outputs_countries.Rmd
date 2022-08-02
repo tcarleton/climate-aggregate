@@ -20,19 +20,19 @@ save_path <- paste0(main_path, 'agg-outputs/diagnostic-figs/')
 output_path <- paste0(main_path, 'agg-outputs/')
 
 ## files
-weight_file  <- 'weights/usa_area_era5_area_crop_weights.csv'
+weight_file  <- 'weights/eu_nuts2_era5_area_crop_weights.csv'
 
-temp_file <- 'output/usa_area_era5_temp_average_1968_2004_polynomial_5_area_crop_weights.csv'
+temp_file <- 'output/eu_area_era5_temp_average_1994_2010_polynomial_5_area_crop_weights.csv'
 
-prcp_file <- 'output/usa_area_era5_prcp_sum_1968_2004_polynomial_3_area_crop_weights.csv'
+prcp_file <- 'output/eu_area_era5_prcp_sum_1994_2010_polynomial_3_area_crop_weights.csv'
 
-polygon_file <- 'shapefiles/USA/tl_2016_us_county_mortality.shp'
+polygon_file <- 'shapefiles/EU/NUTS2_RG_60M_2013_mortality.shp'
 
 
 ## Information for saving/filtering
 ## ----------------------------------------------
 
-country_name <- "USA"
+country_name <- "EU"
 low_temp_month <- 'month_01'
 high_temp_month <- 'month_08'
 spring_months <- c('month_03', 'month_04', 'month_05')
@@ -41,7 +41,7 @@ low_prcp_m <- 'month_12'
 dry_months <- c('month_12', 'month_01', 'month_02')
 high_prcp_m <- 'month_07'
 wet_months <- c('month_06', 'month_07', 'month_08')
-plot_yrs <- seq(1968, 2004, by = 10)
+plot_yrs <- seq(1994, 2010, by = 5)
 
 
 
@@ -107,7 +107,7 @@ country_shp <- read_sf(paste0(main_path, polygon_file))
 
 ## for plotting - change the column name as needed
 country_areas <- country_shp %>% 
-  mutate(poly_id = GEOID) %>% 
+  mutate(poly_id = NUTS_ID) %>% 
   select(poly_id)
 
 if(country_name == "USA") {
@@ -153,10 +153,11 @@ xy_ids <- out_1 %>%
 # Map area weights 
 # Area weight = fraction of the cell covered by the polygon * area km 2
 # Normalized by polygon so all polygons should sum to 1
-map_area_weights <- country_shp %>%
-  st_shift_longitude() %>%
+map_area_weights <- 
+  # country_shp %>%
+  # st_shift_longitude() %>%
   ggplot() + 
-  geom_sf(fill = NA, lwd = 0) +
+  # geom_sf(fill = NA, lwd = 0) +
   geom_tile(data = out_1, aes(x=x, y=y, fill=w_area)) +
   labs(fill = 'Area Weight',
        x = '',
@@ -173,6 +174,23 @@ sum_area_weights <- out_1 %>%
 
 unique(sum_area_weights$sum_w_area)
 
+## map eu
+test <- st_shift_longitude(country_shp)
+
+eu_map <- 
+  ggplot() + 
+  geom_sf(data = test, fill = "grey", lwd = 0) +
+  xlim(min(st_coordinates(test)[, 1]) - 1, max(st_coordinates(test)[, 1]) +
+             1) +
+  ylim(min(st_coordinates(test)[, 2]) - 1, max(st_coordinates(test)[, 2]) +
+             1)
+
+ggsave(map_area_weights,
+       filename = file.path(paste0(save_path, "/", country_name, '/eu_map.pdf')),
+       dpi = 300,
+       device = 'pdf')
+
+
 ```
 
 ```{r message=F, warning=F, echo=F}
@@ -187,8 +205,9 @@ Crop weights are the fraction of the crops within the polygon occurring within a
 # Map crop weights 
 # crop weight = fraction of the cell covered by the polygon * crop weight
 # Normalized by polygon so all polygons should sum to 1
-map_crop_weights <- country_shp %>%
-  st_shift_longitude() %>%
+map_crop_weights <- 
+  # country_shp %>%
+  # st_shift_longitude() %>%
   ggplot() + 
   geom_sf(fill = NA, lwd = 0) +
   geom_tile(data = out_1, aes(x=x, y=y, fill=weight)) +
