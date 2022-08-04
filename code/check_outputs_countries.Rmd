@@ -108,7 +108,7 @@ country_shp <- read_sf(paste0(main_path, polygon_file))
 ## for plotting - change the column name as needed
 country_areas <- country_shp %>% 
   mutate(poly_id = NUTS_ID) %>% 
-  select(poly_id)
+  dplyr::select(poly_id)
 
 if(country_name == "USA") {
   
@@ -174,21 +174,7 @@ sum_area_weights <- out_1 %>%
 
 unique(sum_area_weights$sum_w_area)
 
-## map eu
-test <- st_shift_longitude(country_shp)
 
-eu_map <- 
-  ggplot() + 
-  geom_sf(data = test, fill = "grey", lwd = 0) +
-  xlim(min(st_coordinates(test)[, 1]) - 1, max(st_coordinates(test)[, 1]) +
-             1) +
-  ylim(min(st_coordinates(test)[, 2]) - 1, max(st_coordinates(test)[, 2]) +
-             1)
-
-ggsave(map_area_weights,
-       filename = file.path(paste0(save_path, "/", country_name, '/eu_map.pdf')),
-       dpi = 300,
-       device = 'pdf')
 
 
 ```
