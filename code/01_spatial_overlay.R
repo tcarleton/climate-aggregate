@@ -101,6 +101,10 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
     weights_ymin <- min(weights_dt$y)
     weights_ymax <- max(weights_dt$y)
     
+    # Updated Min/Max of raster (post first shift)
+    rast_xmin <- extent(clim_area_raster)@xmin
+    rast_xmax <- extent(clim_area_raster)@xmax
+    
     # If weights don't match raster convert them 
     if(!dplyr::near(weights_xmax, rast_xmax, tol=1.01)) {
       
@@ -108,9 +112,10 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
                              round(weights_xmin,0), '-', round(weights_xmax,0),
                              'to', round(rast_xmin,0), '-', round(rast_xmax,0)))
       
-      weights_dt[, x := ifelse(x < 0, x + 360, x)]
+      weights_dt[, x := x - 180]
       
-    }
+    } else {
+      message(crayon::green('No need to adjust secondary weights'))}
     
     # Set key column in the merged dt table
     keycols = c("x", "y")
