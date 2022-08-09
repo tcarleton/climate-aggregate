@@ -112,7 +112,7 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
                              round(weights_xmin,0), '-', round(weights_xmax,0),
                              'to', round(rast_xmin,0), '-', round(rast_xmax,0)))
       
-      weights_dt[, x := x - 180]
+      weights_dt[, x := ifelse(x >= 180, x - 360, x)]
       
     } else {
       message(crayon::green('No need to adjust secondary weights'))}
