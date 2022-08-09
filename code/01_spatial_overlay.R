@@ -59,12 +59,11 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   # Shift polygons if initial longitudes don't align 
   if(!dplyr::near(poly_xmax, rast_xmax, tol=1.01)) {
 
-    message(crayon::yellow('Adjusting polygon longitude from',
-                            round(poly_xmin,0), '-', round(poly_xmax,0),
-                           'to', round(rast_xmin,0), '-', round(rast_xmax,0)))
+    message(crayon::yellow('Adjusting raster longitude from',
+                            round(rast_xmin,0), '-', round(rast_xmax,0),
+                           'to -180 to 180'))
 
-    input_polygons <- input_polygons %>% 
-      st_shift_longitude()
+    clim_area_raster <- raster::rotate(clim_area_raster)
 
   }
   
@@ -208,6 +207,11 @@ calc_geoweights <- function(data_source = 'era5',  input_polygons, polygon_id, w
   
   # If it doesn't error out then all weight sums = 1
   message(crayon::green('All weights sum to 1'))
+  
+  ## Convert back to 0-360 
+  ## -----------------------------------------------
+  
+  w_norm[, x := ifelse(x < 0, x + 360, x)]
   
   ## Save outputs 
   ## -----------------------------------------------
