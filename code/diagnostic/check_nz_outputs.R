@@ -311,14 +311,15 @@ min(prcp_comp$diff)
 ## very small, seems good
 
 
-# weights_dt <- fread(paste0(main_path, 'demo-data/era5_cropland_2003_full.csv'))
-# 
-# dupl <- weights_dt %>%
-#   group_by(x, y) %>%
-#   summarise(n = n()) %>%
-#   ungroup()
-# 
-# dupl2 <-  duplicated(weights_dt)
+weights_dt <- fread(paste0(main_path, 'demo-data/era5_cropland_2003_full.csv'))
+
+dupl <- weights_dt %>%
+  group_by(x, y) %>%
+  mutate(n = n()) %>%
+  ungroup() %>%
+  mutate(id = paste(x, y, sep = "_"))
+
+dupl2 <-  duplicated(weights_dt)
 
 
 
