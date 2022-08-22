@@ -3,6 +3,9 @@
 ## Make a general function that resamples a raster of interest to the ERA grid
 ## Processing step for potapov crop weights to turn into a single global map by year
 
+source(here::here('code', 'file_paths.R')) # define the root directory for where data is stored
+data_folder = file.path(input_dir, 'data')
+
 #' Function that resamples a raster of interest to the ERA grid
 #' 
 #' @param weights_raster a raster of a continuous variable, for example cropland coverage or population
@@ -10,9 +13,6 @@
 #' @param extent an optional extent to crop the weights_raster to for faster processing
 #' 
 #' @return a data.table of geoweights (area weighted raster/polygon overlap)
-
-source(here::here('code', 'file_paths.R')) # define the root directory for where data is stored
-data_folder = file.path(root_dir, 'data')
 
 calc_raster_weights <- function(weights_raster, data_source = 'era5', extent = "full"){
   
@@ -172,6 +172,11 @@ full_potapov <- function(year){
   stopCluster(cl)
   
   full_table <- rbindlist(tables)
+
+  # average duplicates
+  keys <- colnames(full_table)[!grepl('weight',colnames(full_table))]
+  full_table <- full_table[,list(weight= mean(weight)),keys]
+
   # save the whole world of potapov data
   path = file.path(data_folder, "int", "rasterweights")
   fwrite(full_table, file = file.path(path, paste0("era5_cropland_", year, "_full.csv")))
@@ -184,3 +189,27 @@ for (year in years){
 #lapply(years, full_potapov)
 
 
+# Because some of the ERA5 grid cells fall partially in more than one of the potapov cropland quandrants, this results in two values than should be averaged. 
+# This step was originally not added into the full_potapov function, and is therefore added here to recrify this. 
+# On August 22, 2022, full_potapov was changed to include this step and therefore the following step is no longer necessary if running the process from the top. 
+
+# years <- c(2003, 2019)
+
+# mean_duplicates <- function(year){
+#   library(data.table)
+
+#   # read in table
+#   path = file.path(data_folder, "int", "rasterweights")
+#   full_table = fread(file = file.path(path, paste0("era5_cropland_", year, "_full.csv")))
+
+#   # average duplicates
+#   keys <- colnames(full_table)[!grepl('weight',colnames(full_table))]
+#   unique_table <- full_table[,list(weight= mean(weight)),keys]
+
+#   # save new table -- overwrite the old one
+#   fwrite(unique_table, file = file.path(path, paste0("era5_cropland_", year, "_full.csv")))
+# }
+
+# for (year in years){
+#   mean_duplicates(year)
+# }
