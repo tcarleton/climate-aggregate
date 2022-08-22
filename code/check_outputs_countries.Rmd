@@ -20,28 +20,28 @@ save_path <- paste0(main_path, 'agg-outputs/diagnostic-figs/')
 output_path <- paste0(main_path, 'agg-outputs/')
 
 ## files
-weight_file  <- 'weights/eu_nuts2_era5_area_crop_weights.csv'
+weight_file  <- 'weights/brazil_muni_era5_area_crop_weights.csv'
 
-temp_file <- 'output/eu_area_era5_temp_average_1994_2010_polynomial_5_area_crop_weights.csv'
+temp_file <- 'output/brazil_muni_era5_temp_average_1990_2019_polynomial_5_area_crop_weights.csv'
 
-prcp_file <- 'output/eu_area_era5_prcp_sum_1994_2010_polynomial_3_area_crop_weights.csv'
+prcp_file <- 'output/brazil_muni_era5_prcp_sum_1990_2019_polynomial_3_area_crop_weights.csv'
 
-polygon_file <- 'shapefiles/EU/NUTS2_RG_60M_2013_mortality.shp'
+polygon_file <- 'shapefiles/BRA/geo2_br1980_2010.shp'
 
 
 ## Information for saving/filtering
 ## ----------------------------------------------
 
-country_name <- "EU"
-low_temp_month <- 'month_01'
-high_temp_month <- 'month_08'
-spring_months <- c('month_03', 'month_04', 'month_05')
-fall_months <- c('month_10', 'month_11', 'month_12')
-low_prcp_m <- 'month_12'
-dry_months <- c('month_12', 'month_01', 'month_02')
-high_prcp_m <- 'month_07'
-wet_months <- c('month_06', 'month_07', 'month_08')
-plot_yrs <- seq(1994, 2010, by = 5)
+country_name <- "BRA"
+low_temp_month <- 'month_07'
+high_temp_month <- 'month_02'
+spring_months <- c('month_11', 'month_12', 'month_01')
+fall_months <- c('month_04', 'month_05', 'month_06')
+low_prcp_m <- 'month_09'
+dry_months <- c('month_08', 'month_09', 'month_10')
+high_prcp_m <- 'month_12'
+wet_months <- c('month_12', 'month_01', 'month_02')
+plot_yrs <- seq(1990, 2019, by = 5)
 
 
 
@@ -107,10 +107,10 @@ country_shp <- read_sf(paste0(main_path, polygon_file))
 
 ## for plotting - change the column name as needed
 country_areas <- country_shp %>% 
-  mutate(poly_id = NUTS_ID) %>% 
+  mutate(poly_id = GEOLEVEL2) %>% 
   dplyr::select(poly_id)
 
-if(country_name == "USA") {
+if(country_name %in% c("USA", "BRA")) {
   
   country_areas <- country_areas %>%
     mutate(poly_id = str_remove(poly_id, pattern = START %R% '0'))
@@ -130,7 +130,7 @@ Step 1 output is the overlap between polygons for Japan and the climate rasters.
 
 ```{r check-area-weights}
 check_id_counts <- out_1 %>% 
-  select(poly_id) %>% 
+  dplyr::select(poly_id) %>% 
   distinct() 
 
 nrow(country_shp) == nrow(check_id_counts)
@@ -360,7 +360,7 @@ low_temp_df <- out3_sf %>%
   filter(month == low_temp_month)
 
 map_order1_lowt <- low_temp_df %>% 
-  st_shift_longitude() %>%
+  # st_shift_longitude() %>%
   filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1_avg), lwd = 0) + 
