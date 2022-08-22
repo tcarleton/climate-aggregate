@@ -18,11 +18,18 @@ input_dir <- file.path("/home/tcarleton/Climate")
 save_dir <- file.path("/home/traceymangin")
 
 ## input polygons
-input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "NZL", "gadm36_NZL_1.shp"))
+
+## cluster
+# input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "NZL", "gadm36_NZL_1.shp"))
+
+## local
+input_polygons <- read_sf('/Volumes/GoogleDrive/Shared Drives/emlab/projects/current-projects/climate-data-pipeline/shapefiles/NZL/gadm36_NZL_1.shp')
+
 
 ## step 1: resample a secondary weight
 polygon_extent <- extent(input_polygons)
 polygon_extent_vec <- c(polygon_extent@xmin, polygon_extent@xmax, polygon_extent@ymin, polygon_extent@ymax)
+# polygon_extent_vec <- c(-178.82695, 179.06583, -52.62083, -29.23166)
 
 cropland_weights <- secondary_weights(secondary_raster = cropland_world_2003_era5,
                                       grid = era5_grid,
