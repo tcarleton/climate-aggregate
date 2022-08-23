@@ -32,6 +32,32 @@ input_polygons <- read_sf('/Volumes/GoogleDrive/Shared Drives/emlab/projects/cur
 ## polygon id
 polygon_id <- 'NAME_1'
 
+## years
+years <- c(2009:2020)
+
+## prcp files
+prcp_vec <- vector()
+
+for(i in 1:length(years)) {
+  
+  temp_name <- paste0('era5_prcp_', years[i], '.nc')
+  
+  prcp_vec[i] <- temp_name
+
+}
+
+## temp files
+temp_vec <- vector()
+
+for(i in 1:length(years)) {
+  
+  temp_name <- paste0('era5_temp_', years[i], '.nc')
+  
+  temp_vec[i] <- temp_name
+  
+}
+  
+  
 ## Step 1: filter weights for polygon extent
 ## -----------------------------------------------------
 
@@ -43,7 +69,7 @@ sec_weight_filt <- dplyr::filter(sec_weight,
                             y >= round(polygon_extent@ymin) - 1,
                             y <= round(polygon_extent@ymax) + 1)
 
-## Step 1: Overlay administrative regions onto your data's grid
+## Step 2: Overlay administrative regions onto your data's grid
 ## ------------------------------------------------------------
 
 polygon_weights <- overlay_weights(polygons = input_polygons,
@@ -51,14 +77,41 @@ polygon_weights <- overlay_weights(polygons = input_polygons,
                                    grid = era5_grid,
                                    secondary_weights = sec_weight_filt)
 
-## check these outputs with those from non-package run
-nz_weights <- fread('/Volumes/GoogleDrive/Shared Drives/emlab/projects/current-projects/climate-data-pipeline/agg-outputs/weights/nzl_region_era5_area_crop_weights.csv')
+## Step 3: Aggregation (polynomial)
+## ------------------------------------------------------------
 
-nz_weights <- nz_weights %>%
-  pivot_longer(names_to = "weight", values_to = "orig_value", w_area:weight)
+## for cropping .nc files
+min_x <- min(polygon_weights$x) - 0.5
+max_x <- max(polygon_weights$x) + 0.5
+min_y <- min(polygon_weights$y) - 0.5
+max_y <- max(polygon_weights$y) + 0.5
 
-new_weights <- polygon_weights %>%
-  pivot_longer(names_to = "weight", values_to = "new_value", w_area:weight) %>%
-  left_join(nz_weights) %>%
-  mutate(diff = new_value - orig_value)
+weights_ext <- raster::extent(min_x, max_x, min_y, max_y)
+
+
+
+## temperature
+
+temp_list <- list()
+
+for(i in 1:length(years)) {
+  
+  # Climate data file paths
+  ncpath  <- file.path(input_dir, 'data/raw/temp')
+  nc_file <- paste0(ncpath, '/', temp_vec[i])
+  
+  # Immediately crop to weights extent 
+  clim_raster_tmp <- raster::crop(raster::stack(nc_file), weights_ext)
+  
+  temp_out <- staggregate_polynomial(clim_raster_tmp,
+                                     polygon_weights,
+                                     daily_agg = 'average',
+                                     time_agg = 'month',
+                                     degree = 5)
+  
+  temp_list[i] <- temp_out
+  
+}
+
+
 
