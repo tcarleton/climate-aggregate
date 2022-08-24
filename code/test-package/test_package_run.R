@@ -9,12 +9,23 @@
 library(stagg)
 library(tidyverse)
 library(sf)
-library(here)
+library(raster)
+library(data.table)
+library(rgdal)
+# library(ncdf4)
 
 ## set paths
 # root_dir <- file.path("/home/traceymangin/climate-aggregate")
 input_dir <- file.path("/home/tcarleton/Climate")
 save_dir <- file.path("/home/traceymangin")
+
+## for saving outputs
+## ---------------------------------------------------------------
+
+data_source <- 'era5'
+sec_weights <- TRUE
+weight_type <- 'area_crop'
+country_name <- 'new_zealand'
 
 ## set inputs for run
 ## ----------------------------------------------------------------
@@ -77,6 +88,27 @@ polygon_weights <- overlay_weights(polygons = input_polygons,
                                    grid = era5_grid,
                                    secondary_weights = sec_weight_filt)
 
+## save weight output
+
+weights_save_path <- file.path(save_dir, 'climate-out', 'weights')
+
+if(!dir.exists(weights_save_path)){
+  
+  # If no - create it
+  message(crayon::yellow('Creating climate-out/weights/'))
+  dir.create(file.path(save_dir, "climate-out", "weights"), recursive=T)
+  
+}
+
+## weights save name
+weights_save_name <- paste0(paste(country_name, polygon_id, data_source, weight_type, sep="_"), ".csv")
+
+# Save message
+message(crayon::yellow('Saving', weights_save_name, 'to', weights_save_path))
+
+fwrite(polygon_weights, file = file.path(weights_save_path, weights_save_name))
+
+
 ## Step 3: Aggregation (polynomial)
 ## ------------------------------------------------------------
 
@@ -101,6 +133,8 @@ for(i in 1:length(years)) {
   nc_file <- paste0(ncpath, '/', temp_vec[i])
   
   # Immediately crop to weights extent 
+   
+  # library(ncdf4)
   clim_raster_tmp <- raster::crop(raster::stack(nc_file), weights_ext)
   
   temp_out <- staggregate_polynomial(clim_raster_tmp,
