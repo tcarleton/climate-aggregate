@@ -12,6 +12,7 @@ library(sf)
 library(raster)
 library(data.table)
 library(rgdal)
+library(parallel)
 # library(ncdf4)
 
 ## set paths
@@ -34,40 +35,13 @@ country_name <- 'new_zealand'
 sec_weight <- cropland_world_2003_era5 ## cropland_world_2003_era5 = crops, pop_world_2015_era5 = pop
 
 ## polygon
-## cluster
-# input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "NZL", "gadm36_NZL_1.shp"))
-
-## local
-input_polygons <- read_sf('/Volumes/GoogleDrive/Shared Drives/emlab/projects/current-projects/climate-data-pipeline/shapefiles/NZL/gadm36_NZL_1.shp')
+input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "NZL", "gadm36_NZL_1.shp"))
 
 ## polygon id
 polygon_id <- 'NAME_1'
 
 ## years
 years <- c(2009:2020)
-
-## prcp files
-prcp_vec <- vector()
-
-for(i in 1:length(years)) {
-  
-  temp_name <- paste0('era5_prcp_', years[i], '.nc')
-  
-  prcp_vec[i] <- temp_name
-
-}
-
-## temp files
-temp_vec <- vector()
-
-for(i in 1:length(years)) {
-  
-  temp_name <- paste0('era5_temp_', years[i], '.nc')
-  
-  temp_vec[i] <- temp_name
-  
-}
-  
   
 ## Step 1: filter weights for polygon extent
 ## -----------------------------------------------------
@@ -101,7 +75,7 @@ if(!dir.exists(weights_save_path)){
 }
 
 ## weights save name
-weights_save_name <- paste0(paste(country_name, polygon_id, data_source, weight_type, sep="_"), ".csv")
+weights_save_name <- paste0(paste(country_name, polygon_id, data_source, weight_type, sep="-"), ".csv")
 
 # Save message
 message(crayon::yellow('Saving', weights_save_name, 'to', weights_save_path))
@@ -120,32 +94,99 @@ max_y <- max(polygon_weights$y) + 0.5
 
 weights_ext <- raster::extent(min_x, max_x, min_y, max_y)
 
+## Run staggregate_polynomial function over multiple years in parallel
+## --------------------------------------------------------------------------
 
+## Function for cropping raster and running staggregate
 
-## temperature
-
-temp_list <- list()
-
-for(i in 1:length(years)) {
-  
+run_stagg_year_temp <- function(year) {  
+    
   # Climate data file paths
   ncpath  <- file.path(input_dir, 'data/raw/temp')
-  nc_file <- paste0(ncpath, '/', temp_vec[i])
+  nc_file <- paste0(ncpath, '/', 'era5_temp_', year, '.nc')
   
   # Immediately crop to weights extent 
-   
-  # library(ncdf4)
   clim_raster_tmp <- raster::crop(raster::stack(nc_file), weights_ext)
   
+  ## run stagg for temp
   temp_out <- staggregate_polynomial(clim_raster_tmp,
                                      polygon_weights,
                                      daily_agg = 'average',
                                      time_agg = 'month',
                                      degree = 5)
   
-  temp_list[i] <- temp_out
+}
+
+run_stagg_year_prcp <- function(year) {  
+  
+  # Climate data file paths
+  ncpath  <- file.path(input_dir, 'data/raw/prcp')
+  nc_file <- paste0(ncpath, '/', 'era5_prcp_', year, '.nc')
+  
+  # Immediately crop to weights extent 
+  clim_raster_tmp <- raster::crop(raster::stack(nc_file), weights_ext)
+  
+  ## run stagg for prcp  
+  prcp_out <- staggregate_polynomial(clim_raster_tmp,
+                                     polygon_weights,
+                                     daily_agg = 'sum',
+                                     time_agg = 'month',
+                                     degree = 3)
   
 }
+
+
+## set up (cores, cluster)
+no_cores <- parallel::detectCores() - 1 # Calculate the number of cores. Leave one in case something else needs to be done on the same computer at the same time. 
+cl <- makeCluster(no_cores, type = "FORK") # Initiate cluster. "FORK" means bring everything in your current environment with you. 
+
+## run 
+stagg_multiyear_temp <- parLapply(cl, years, run_stagg_year_temp)
+stagg_multiyear_prcp <- parLapply(cl, years, run_stagg_year_prcp)
+
+## stop cluster
+stopCluster(cl)
+
+## rbind
+stagg_multiyear_temp_all <- data.table::rbindlist(stagg_multiyear_temp)
+stagg_multiyear_prcp_all <- data.table::rbindlist(stagg_multiyear_prcp)
+
+## save outputs
+
+output_save_path <- file.path(save_dir, "climate-out", "output")  
+
+# Check if there is already an output folder
+  if(!dir.exists(output_save_path)){
+
+    # If no - create it
+    message(crayon::yellow('Creating climate-out/output'))
+    dir.create(file.path(save_dir, "climate-out", "output"), recursive=T)
+
+  }
+
+  save_name_temp <- paste0(paste(country_name, polygon_id, data_source, weight_type,
+                              years[1], years[length(years)], 'temp', sep="-"), ".csv")
+
+  save_name_prcp <- paste0(paste(country_name, polygon_id, data_source, weight_type,
+                                 years[1], years[length(years)], 'prcp', sep="-"), ".csv")
+  
+  
+  # Save message
+  message(crayon::yellow('Saving', save_name_temp, 'to', output_save_path))
+  fwrite(stagg_multiyear_temp_all, file = file.path(output_save_path, save_name_temp))
+  
+  message(crayon::yellow('Saving', save_name_prcp, 'to', output_save_path))
+  fwrite(stagg_multiyear_prcp_all, file = file.path(output_save_path, save_name_prcp))
+
+  # Done
+  message(crayon::green('Done'))
+
+
+
+
+
+
+
 
 
 
