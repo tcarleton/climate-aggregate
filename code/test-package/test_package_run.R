@@ -117,6 +117,9 @@ run_stagg_year_temp <- function(year) {
   # immediately crop to weights extent 
   clim_raster_tmp <- raster::crop(raster::stack(nc_file), weights_ext)
   
+  ## convert Kelvin to celcius
+  clim_raster_tmp <- clim_raster_tmp - 273.15
+  
   ## run stagg for temp
   temp_out <- staggregate_polynomial(clim_raster_tmp,
                                      polygon_weights,
@@ -128,12 +131,15 @@ run_stagg_year_temp <- function(year) {
 
 run_stagg_year_prcp <- function(year) {  
   
-  # Climate data file paths
+  ## climate data file paths
   ncpath  <- file.path(input_dir, 'data/raw/prcp')
   nc_file <- paste0(ncpath, '/', 'era5_prcp_', year, '.nc')
   
-  # Immediately crop to weights extent 
+  ## immediately crop to weights extent 
   clim_raster_tmp <- raster::crop(raster::stack(nc_file), weights_ext)
+  
+  ## convert m to mm
+  clim_raster_tmp <- clim_raster_tmp * 1000
   
   ## run stagg for prcp  
   prcp_out <- staggregate_polynomial(clim_raster_tmp,
