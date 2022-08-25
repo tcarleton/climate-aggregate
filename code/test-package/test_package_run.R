@@ -48,7 +48,7 @@ if(!dir.exists(output_save_path)){
 data_source <- 'era5'
 sec_weights <- TRUE
 weight_type <- 'area_crop'
-country_name <- 'chile'
+country_name <- 'new_zealand'
 
 ## set inputs for run
 ## ----------------------------------------------------------------
@@ -57,13 +57,13 @@ country_name <- 'chile'
 sec_weight <- cropland_world_2003_era5 ## cropland_world_2003_era5 = crops, pop_world_2015_era5 = pop
 
 ## polygon
-input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "CHL", "cl_comunas_geo_mortality_adm2.shp"))
+input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "NZL", "gadm36_NZL_1.shp"))
 
 ## polygon id
-polygon_id <- 'adm2_id'
+polygon_id <- 'NAME_1'
 
 ## years
-years <- c(1997:2013)
+years <- c(2009:2020)
   
 ## Step 1: filter weights for polygon extent
 ## -----------------------------------------------------
