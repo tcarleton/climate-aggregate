@@ -20,28 +20,28 @@ save_path <- paste0(main_path, 'agg-outputs/diagnostic-figs/')
 output_path <- paste0(main_path, 'agg-outputs/')
 
 ## files
-weight_file  <- 'weights/brazil_muni_era5_area_crop_weights.csv'
+weight_file  <- 'weights/eu_nuts2_era5_area_crop_weights.csv'
 
-temp_file <- 'output/brazil_muni_era5_temp_average_1990_2019_polynomial_5_area_crop_weights.csv'
+temp_file <- 'output/eu_nuts2_era5_temp_average_1994_2010_polynomial_5_area_crop_weights.csv'
 
-prcp_file <- 'output/brazil_muni_era5_prcp_sum_1990_2019_polynomial_3_area_crop_weights.csv'
+prcp_file <- 'output/eu_nuts2_era5_prcp_sum_1994_2010_polynomial_3_area_crop_weights.csv'
 
-polygon_file <- 'shapefiles/BRA/geo2_br1980_2010.shp'
+polygon_file <- 'shapefiles/EU/NUTS2_RG_60M_2013_mortality.shp'
 
 
 ## Information for saving/filtering
 ## ----------------------------------------------
 
-country_name <- "BRA"
-low_temp_month <- 'month_07'
-high_temp_month <- 'month_02'
-spring_months <- c('month_11', 'month_12', 'month_01')
-fall_months <- c('month_04', 'month_05', 'month_06')
-low_prcp_m <- 'month_09'
-dry_months <- c('month_08', 'month_09', 'month_10')
+country_name <- "EU"
+low_temp_month <- 'month_01'
+high_temp_month <- 'month_08'
+spring_months <- c('month_03', 'month_04', 'month_05')
+fall_months <- c('month_09', 'month_10', 'month_11')
+low_prcp_m <- 'month_07'
+dry_months <- c('month_06', 'month_07', 'month_08')
 high_prcp_m <- 'month_12'
 wet_months <- c('month_12', 'month_01', 'month_02')
-plot_yrs <- seq(1990, 2019, by = 5)
+plot_yrs <- seq(1994, 2010, by = 5)
 
 
 
@@ -107,7 +107,7 @@ country_shp <- read_sf(paste0(main_path, polygon_file))
 
 ## for plotting - change the column name as needed
 country_areas <- country_shp %>% 
-  mutate(poly_id = GEOLEVEL2) %>% 
+  mutate(poly_id = NUTS_ID) %>% 
   dplyr::select(poly_id)
 
 if(country_name %in% c("USA", "BRA")) {
@@ -382,7 +382,7 @@ high_temp_df <-  out3_sf %>%
   filter(month == high_temp_month)
 
 map_order1_hight <- high_temp_df %>%
-  st_shift_longitude() %>%
+  # st_shift_longitude() %>%
   filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1_avg), lwd = 0) + 
@@ -404,7 +404,7 @@ spring_df <-  out3_sf %>%
   filter(month %in% spring_months) 
 
 map_order1_spring <- spring_df %>%
-  st_shift_longitude() %>%
+  # st_shift_longitude() %>%
   filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1_avg), lwd = 0) + 
@@ -426,7 +426,7 @@ fall_temp_df <- out3_sf %>%
   filter(month %in% fall_months)
 
 map_order1_fall <- fall_temp_df %>%
-  st_shift_longitude() %>%
+  # st_shift_longitude() %>%
   filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1_avg), lwd = 0) + 
@@ -520,7 +520,7 @@ low_prcp <- out2_prcp_sf %>%
   filter(month == low_prcp_m)
 
 map_prcp_low <- low_prcp %>% 
-  st_shift_longitude() %>%
+  # st_shift_longitude() %>%
   filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
@@ -544,7 +544,7 @@ high_prcp <- out2_prcp_sf %>%
   filter(month == high_prcp_m)
 
 map_prcp_high <- high_prcp %>% 
-  st_shift_longitude() %>%
+  # st_shift_longitude() %>%
   filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
@@ -567,7 +567,7 @@ wet_months <- out2_prcp_sf %>%
   filter(month %in% wet_months)
 
 map_order1_wet <- wet_months %>% 
-  st_shift_longitude() %>%
+  # st_shift_longitude() %>%
   filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
@@ -590,7 +590,7 @@ dry_months <- out2_prcp_sf %>%
   filter(month %in% dry_months)
 
 map_order1_dry <- dry_months %>% 
-  st_shift_longitude() %>%
+  # st_shift_longitude() %>%
   filter(year %in% plot_yrs) %>%
   ggplot() + 
   geom_sf(aes(fill = order_1), lwd = 0) + 
