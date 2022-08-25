@@ -110,11 +110,11 @@ weights_ext <- raster::extent(min_x, max_x, min_y, max_y)
 
 run_stagg_year_temp <- function(year) {  
     
-  # Climate data file paths
+  # climate data file paths
   ncpath  <- file.path(input_dir, 'data/raw/temp')
   nc_file <- paste0(ncpath, '/', 'era5_temp_', year, '.nc')
   
-  # Immediately crop to weights extent 
+  # immediately crop to weights extent 
   clim_raster_tmp <- raster::crop(raster::stack(nc_file), weights_ext)
   
   ## run stagg for temp
