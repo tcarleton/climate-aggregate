@@ -34,6 +34,15 @@ nz_temp_stagg_df <- fread(paste0(stagg_path, 'outputs/new_zealand-NAME_1-era5-ar
 nz_prcp_stagg_df <- fread(paste0(stagg_path, 'outputs/new_zealand-NAME_1-era5-area_crop-2009-2020-prcp.csv'))
 
 
+## ECU: read in files
+ecu_weights_df <- fread(paste0(main_path, 'weights/ecu_province_era5_area_crop_weights.csv'))
+ecu_weights_stagg_df <- fread(paste0(stagg_path, '/weights/ECU-NAME_1-era5-area_crop.csv'))
+
+ecu_temp_df <- fread(paste0(main_path, 'output/ecu_province_era5_temp_average_1990_2018_polynomial_5_area_crop_weights.csv'))
+ecu_prcp_df <- fread(paste0(main_path, 'output/ecu_province_era5_prcp_sum_1990_2018_polynomial_3_area_crop_weights.csv'))
+
+ecu_temp_stagg_df <- fread(paste0(stagg_path, 'outputs/ECU-NAME_1-era5-area_crop-1990-2018-temp.csv'))
+ecu_prcp_stagg_df <- fread(paste0(stagg_path, 'outputs/ECU-NAME_1-era5-area_crop-1990-2018-prcp.csv'))
 
 ## compare weights
 ## --------------------------------------------------
@@ -110,5 +119,42 @@ nz_prcp_comp <- nz_prcp_stagg_df %>%
   mutate(diff = value_new - value0)
 
 
+## ----------------------------------------------------
+## ECU
+## ----------------------------------------------------
 
+## compare weights
+## --------------------------------------------------
+
+ecu_weights0 <- ecu_weights_df %>%
+  pivot_longer(names_to = 'type', values_to = 'value0', w_area:weight)
+
+ecu_weight_comp <- ecu_weights_stagg_df %>%
+  pivot_longer(names_to = 'type', values_to = 'value_new', w_area:weight) %>%
+  full_join(ecu_weights0) %>%
+  mutate(diff = value_new - value0)
+## diff is zero
+
+## compare temp
+## --------------------------------------------------
+ecu_temp0 <- ecu_temp_df %>%
+  mutate(month = as.integer(str_remove(month, 'month_'))) %>%
+  pivot_longer(names_to = 'order', values_to = 'value0', order_1:order_5)
+
+ecu_temp_comp <- ecu_temp_stagg_df %>%
+  pivot_longer(names_to = 'order', values_to = 'value_new', order_1:order_5) %>%
+  full_join(ecu_temp0) %>%
+  mutate(diff = value_new - value0)
+## conversion...
+
+## compare prcp
+## --------------------------------------------------
+ecu_prcp0 <- ecu_prcp_df %>%
+  mutate(month = as.integer(str_remove(month, 'month_'))) %>%
+  pivot_longer(names_to = 'order', values_to = 'value0', order_1:order_3)
+
+ecu_prcp_comp <- ecu_prcp_stagg_df %>%
+  pivot_longer(names_to = 'order', values_to = 'value_new', order_1:order_3) %>%
+  full_join(ecu_prcp0) %>%
+  mutate(diff = value_new - value0)
 
