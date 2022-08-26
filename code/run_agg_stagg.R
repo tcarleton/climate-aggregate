@@ -16,6 +16,7 @@ library(parallel)
 
 ## set paths
 input_dir <- file.path("/home/tcarleton/Climate") ## path for shapefiles and raw climate data 
+country_input_dir <- file.path("/home/traceymangin/data/inputs") ## path for country inputs
 save_dir <- file.path("/home/traceymangin") ## path for saving outputs (folders defined below)
 
 ## for saving outputs
@@ -44,28 +45,39 @@ if(!dir.exists(output_save_path)){
   
 }
 
-## for naming files
-data_source <- 'era5'
-sec_weights <- TRUE
-weight_type <- 'area_crop'
-country_name <- 'new_zealand'
 
-## set inputs for run
-## ----------------------------------------------------------------
+## read in inputs and define variables for filtering/naming/running
+## -----------------------------------------------------------
 
 ## secondary weights (data included in the stagg package, no need to load separately)
 ## cropland_world_2003_era5 = crops
 ## pop_world_2015_era5 = pop
 sec_weight <- cropland_world_2003_era5
 
-## polygon
-input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", "NZL", "gadm36_NZL_1.shp"))
+## for naming files
+weight_type <- 'area_crop'
 
-## polygon id
-polygon_id <- 'NAME_1'
+## read country inputs and filter for country that you want to run
+country_inputs <- fread(file.path(country_input_dir, "climate_country_inputs.csv"))
+
+## choose country that you want to run
+country_name <- 'ECU' ## use country abbreviation (see country column in country_inputs)
+
+## filter inputs for country, define items
+data_source <- country_inputs[country == country_name, data_src][1]
+
+## read in polygon
+poly_name <- country_inputs[country == country_name, shapefile_name][1]
+input_polygons <- read_sf(file.path(input_dir, "data", "shapefiles", country_name, poly_name))
+
+## polygon geoid
+polygon_id <- country_inputs[country == country_name, id_var][1]
 
 ## years
-years <- c(2009:2020)
+min_year <- country_inputs[country == country_name, start_year][1]
+max_year <- country_inputs[country == country_name, end_year][1]
+years <- c(min_year:max_year)
+
 
 ## Step 1: filter weights for polygon extent
 ## -----------------------------------------------------
@@ -170,10 +182,10 @@ stagg_multiyear_prcp_all <- data.table::rbindlist(stagg_multiyear_prcp)
 
 ## save outputs
 save_name_temp <- paste0(paste(country_name, polygon_id, data_source, weight_type,
-                               years[1], years[length(years)], 'temp', sep="-"), ".csv")
+                               min_year, max_year, 'temp', sep="-"), ".csv")
 
 save_name_prcp <- paste0(paste(country_name, polygon_id, data_source, weight_type,
-                               years[1], years[length(years)], 'prcp', sep="-"), ".csv")
+                               min_year, max_year, 'prcp', sep="-"), ".csv")
 
 ## save message
 message(crayon::yellow('Saving', save_name_temp, 'to', output_save_path))
